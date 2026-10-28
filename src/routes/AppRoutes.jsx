@@ -6,6 +6,7 @@ import Login from '@/pages/Login';
 import Admin from '@/pages/Admin';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
+import AdminCategories from '@/pages/AdminCategories';
 
 function AppRoutes() {
   return (
@@ -23,7 +24,7 @@ function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route path="/admin" element={<Admin />} />
       </Route>
-
+      <Route element={<AdminCategories />} path="/admin/categories" />
     </Routes>
   );
 }
