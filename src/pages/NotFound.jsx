@@ -48,12 +48,7 @@ function NotFound() {
             Go to home
           </Link>
 
-          {/* <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-7 py-3 text-base font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2">
-            Go back
-          </button> */}
+      
         </div>
       </div>
     </main>
