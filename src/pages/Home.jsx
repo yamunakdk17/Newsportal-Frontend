@@ -1,60 +1,127 @@
-const [categories, setCategories] = useState([]);
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState('');
-
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import Header from '@/components/layout/Header';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import NewsCard from '@/components/news/NewsCard';
 
-import api from '@/services/api';
+import newsData from '@/data/newsData';
+import categoryData from '@/data/categoryData';
+
 function Home() {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoading(true);
-        setError('');
-
-        const response = await api.get('/categories');
-
-        console.log('User categories:', response.data);
-
-        if (response.data.success) {
-          setCategories(response.data.data || []);
-        } else {
-          setError(response.data.message || 'Failed to load categories.');
-        }
-      } catch (error) {
-        console.error('Get user categories error:', error);
-
-        setError(error.response?.data?.message || 'Unable to load categories.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCategories();
-  }, []);
+  // Filter news according to selected category
+  const filteredNews =
+    selectedCategory === 'All'
+      ? newsData
+      : newsData.filter(
+          (news) =>
+            news.category?.toLowerCase() ===
+            selectedCategory.toLowerCase()
+        );
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <>
       <Header />
+
       <Navbar />
-      <main className="flex-grow">
-        <div className="container mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold mb-6">Latest News</h1>
-          {loading && <p>Loading...</p>}
-          {error && <p className="text-red-500">{error}</p>}
-        </div>
+
+      <main className="mx-auto max-w-7xl px-4 py-10">
+
+        {/* CATEGORY SECTION */}
+        <section className="mb-10">
+          <div className="mb-5">
+            <h2 className="text-2xl font-bold text-slate-900">
+              Categories
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Explore news by category
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+
+            {/* ALL BUTTON */}
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('All')}
+              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
+                selectedCategory === 'All'
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-slate-200 bg-white text-slate-700 hover:border-blue-600 hover:text-blue-600'
+              }`}
+            >
+              All
+            </button>
+
+            {/* CATEGORY BUTTONS */}
+            {categoryData.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() =>
+                  setSelectedCategory(category.name)
+                }
+                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
+                  selectedCategory.toLowerCase() ===
+                  category.name.toLowerCase()
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-slate-200 bg-white text-slate-700 hover:border-blue-600 hover:text-blue-600'
+                }`}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* NEWS SECTION */}
+        <section>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">
+                {selectedCategory === 'All'
+                  ? 'Latest News'
+                  : `${selectedCategory} News`}
+              </h1>
+
+              <p className="mt-1 text-sm text-slate-500">
+                {filteredNews.length} news article
+                {filteredNews.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+
+          {/* NEWS CARDS */}
+          {filteredNews.length > 0 ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredNews.map((news) => (
+                <NewsCard
+                  key={news.id}
+                  news={news}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
+              <h2 className="text-lg font-semibold text-slate-900">
+                No news found
+              </h2>
+
+              <p className="mt-2 text-sm text-slate-500">
+                There are no news articles in the{' '}
+                {selectedCategory} category yet.
+              </p>
+            </div>
+          )}
+        </section>
+
       </main>
+
       <Footer />
-    </div>
+    </>
   );
 }
 

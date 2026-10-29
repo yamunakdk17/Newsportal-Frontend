@@ -4,27 +4,53 @@ import Home from '@/pages/Home';
 import NewsDetails from '@/pages/NewsDetails';
 import Login from '@/pages/Login';
 import Admin from '@/pages/Admin';
+import AdminCategories from '@/pages/AdminCategories';
+import NotFound from '@/pages/NotFound';
+
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
-import AdminCategories from '@/pages/AdminCategories';
 
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      {/* Home */}
+      <Route
+        path="/"
+        element={<Home />}
+      />
 
-      <Route path="/news/:slug" element={<NewsDetails />} />
+      {/* News Details */}
+      <Route
+        path="/news/:slug"
+        element={<NewsDetails />}
+      />
 
       {/* Login - only for users who are NOT logged in */}
       <Route element={<PublicRoute />}>
-        <Route path="/login" element={<Login />} />
+        <Route
+          path="/login"
+          element={<Login />}
+        />
       </Route>
 
       {/* Admin - only for logged-in users */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/admin" element={<Admin />} />
+        <Route
+          path="/admin"
+          element={<Admin />}
+        />
+
+        <Route
+          path="/admin/categories"
+          element={<AdminCategories />}
+        />
       </Route>
-      <Route element={<AdminCategories />} path="/admin/categories" />
+
+      {/* Any unknown/random URL */}
+      <Route
+        path="*"
+        element={<NotFound />}
+      />
     </Routes>
   );
 }
