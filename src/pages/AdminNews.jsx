@@ -59,6 +59,7 @@ function AdminNews() {
   const [caption, setCaption] = useState('');
   const [author, setAuthor] = useState('');
   const [priority, setPriority] = useState(5);
+  const [excerpt, setExcerpt] = useState('');
 
   // NEW IMAGE FILES
 
@@ -153,6 +154,7 @@ function AdminNews() {
   const resetForm = () => {
     setCategoryId('');
     setTitle('');
+    setExcerpt('');
     setBody('');
     setCaption('');
     setAuthor('');
@@ -190,6 +192,7 @@ function AdminNews() {
     );
 
     setTitle(article.title || '');
+    setExcerpt(article.excerpt || '');
     setBody(article.body || '');
     setCaption(article.caption || '');
     setAuthor(article.author || '');
@@ -251,10 +254,15 @@ function AdminNews() {
 
       const formData = new FormData();
       formData.append('title', title.trim());
+      formData.append('excerpt', excerpt.trim());
       formData.append('body', body.trim());
       formData.append('category_id', Number(categoryId));
       formData.append('is_published', true);
       formData.append('priority', Number(priority));
+
+      if (excerpt.trim()) {
+        formData.append('excerpt', excerpt.trim());
+      }
 
       if (caption.trim()) formData.append('caption', caption.trim());
       if (author.trim()) formData.append('author', author.trim());
@@ -315,12 +323,17 @@ function AdminNews() {
       const formData = new FormData();
 
       formData.append('title', title.trim());
+      formData.append('excerpt', excerpt.trim());
       formData.append('body', body.trim());
       formData.append('category_id', Number(categoryId));
       formData.append('priority', Number(priority));
 
       formData.append('caption', caption.trim());
       formData.append('author', author.trim());
+
+      if (excerpt.trim()) {
+        formData.append('excerpt', excerpt.trim());
+      }
 
       // Send multiple images
       images.forEach((file) => {
@@ -876,16 +889,31 @@ function AdminNews() {
 
                           {/* STATUS */}
 
+                          {/* STATUS */}
+
                           <td className="px-6 py-5">
-                            {article.is_published ? (
-                              <span className="inline-flex rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
-                                Published
-                              </span>
-                            ) : (
-                              <span className="inline-flex rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
-                                Draft
-                              </span>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {article.is_published ? (
+                                <span className="inline-flex rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+                                  Published
+                                </span>
+                              ) : (
+                                <>
+                                  <span className="inline-flex rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
+                                    Draft
+                                  </span>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      console.log('Publish news:', article.id);
+                                    }}
+                                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700">
+                                    Publish
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </td>
 
                           {/* DATE */}
@@ -945,9 +973,10 @@ function AdminNews() {
         </div>
       </main>
 
-      {/* =======================================================
+      {/*
+
           CREATE / EDIT MODAL
-      ======================================================= */}
+       */}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
@@ -1033,6 +1062,27 @@ function AdminNews() {
                 {formErrors.title && (
                   <p className="mt-1 text-xs text-red-600">{formErrors.title}</p>
                 )}
+              </div>
+              {/* EXCERPT */}
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Short Description (Excerpt)
+                </label>
+
+                <textarea
+                  value={excerpt}
+                  onChange={(event) => setExcerpt(event.target.value)}
+                  placeholder="Write a short description of this news article..."
+                  rows={3}
+                  maxLength={300}
+                  disabled={saving}
+                  className="w-full resize-y rounded-lg border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+                />
+
+                <p className="mt-1 text-xs text-slate-400">
+                  {excerpt.length}/300 characters. A short summary displayed on the
+                  frontend.
+                </p>
               </div>
 
               {/* BODY */}
@@ -1291,9 +1341,9 @@ function AdminNews() {
         </div>
       )}
 
-      {/* =======================================================
+      {/*
           IMAGE GALLERY MODAL
-      ======================================================= */}
+       */}
 
       {showGallery && galleryImages.length > 0 && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">

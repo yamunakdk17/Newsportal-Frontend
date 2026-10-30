@@ -10,8 +10,13 @@ import api from '@/services/api';
 function Home() {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [news, setNews] = useState([]);
+  //for the news section//
 
+  const [news, setNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const [newsError, setNewsError] = useState('');
+
+  //category api call section//
   useEffect(() => {
     const fetchCategories = async () => {
       const response = await api.get('/categories?page=1&per_page=10');
@@ -23,22 +28,45 @@ function Home() {
 
     fetchCategories();
   }, []);
-
+  //news api call section//
   useEffect(() => {
     const fetchNews = async () => {
       try {
-        const response = await api.get('/news?page=1&per_page=10');
+        setNewsLoading(true);
+        setNewsError('');
 
-        console.log('News:', response.data);
+        const response = await api.get('/news', {
+          params: {
+            page: 1,
+            per_page: 10,
+          },
+        });
 
-        setNews(response.data.data || []);
+        console.log('News API response:', response.data);
+
+        if (response.data?.success) {
+          setNews(response.data.data || []);
+        } else {
+          setNewsError(response.data?.message || 'Unable to load news.');
+        }
+
+        if (response.data?.success) {
+          setNews(response.data.data || []);
+        } else {
+          setNewsError(response.data?.message || 'Unable to load news.');
+        }
       } catch (error) {
-        console.error('News error:', error);
+        console.error('News API error:', error);
+
+        setNewsError(error.response?.data?.message || 'Unable to load news.');
+      } finally {
+        setNewsLoading(false);
       }
     };
 
     fetchNews();
   }, []);
+
   const filteredNews =
     selectedCategory === 'All'
       ? news
@@ -92,36 +120,38 @@ function Home() {
             ))}
           </div>
         </section>
-
         {/* NEWS SECTION */}
-        <section>
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">
-                {selectedCategory === 'All' ? 'Latest News' : `${selectedCategory} News`}
-              </h1>
 
-              <p className="mt-1 text-sm text-slate-500">
-                {filteredNews.length} news article
-                {filteredNews.length !== 1 ? 's' : ''}
-              </p>
-            </div>
+        <section className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold">Latest News</h2>
+
+            <p className="text-sm text-gray-500">Latest news and updates</p>
           </div>
 
-          {/* NEWS CARDS */}
-          {filteredNews.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredNews.map((news) => (
-                <NewsCard key={news.id} news={news} />
-              ))}
+          {newsLoading && (
+            <div className="py-10 text-center">
+              <p className="text-gray-500">Loading news...</p>
             </div>
-          ) : (
-            <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-              <h2 className="text-lg font-semibold text-slate-900">No news found</h2>
+          )}
 
-              <p className="mt-2 text-sm text-slate-500">
-                There are no news articles in the {selectedCategory} category yet.
-              </p>
+          {!newsLoading && newsError && (
+            <div className="py-10 text-center">
+              <p className="text-red-500">{newsError}</p>
+            </div>
+          )}
+
+          {!newsLoading && !newsError && news.length === 0 && (
+            <div className="py-10 text-center">
+              <p className="text-gray-500">No news available.</p>
+            </div>
+          )}
+
+          {!newsLoading && !newsError && news.length > 0 && (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {news.map((item) => (
+                <NewsCard key={item.id} news={item} />
+              ))}
             </div>
           )}
         </section>
