@@ -102,8 +102,6 @@ function AdminCategories() {
 
       // UPDATE
 
-      // UPDATE
-
       if (editingCategory) {
         const response = await api.put(`/admin/categories/${editingCategory.id}`, {
           name,
@@ -117,23 +115,9 @@ function AdminCategories() {
           return;
         }
 
-        // Update only this category in the UI
-        const updatedCategory = response.data.data;
-
-        setCategories((currentCategories) =>
-          currentCategories.map((category) =>
-            category.id === editingCategory.id
-              ? {
-                  ...category,
-                  ...updatedCategory,
-                  name: updatedCategory?.name || name,
-                }
-              : category,
-          ),
-        );
-
         setSuccess(response.data.message || 'Category updated successfully.');
       }
+
       // CREATE
       else {
         const response = await api.post('/admin/categories', {
@@ -148,15 +132,11 @@ function AdminCategories() {
           return;
         }
 
-        // Add the newly created category directly to the UI
-        const newCategory = response.data.data;
-
-        setCategories((currentCategories) => [newCategory, ...currentCategories]);
-
         setSuccess(response.data.message || 'Category created successfully.');
       }
 
       // Get fresh data from backend
+      await fetchCategories();
 
       setShowModal(false);
       setEditingCategory(null);
@@ -172,43 +152,37 @@ function AdminCategories() {
 
   // DELETE
 
- const handleDelete = async (id) => {
-   setShowModal(false);
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm('Are you sure you want to delete this category?');
 
-   const confirmed = window.confirm('Are you sure you want to delete this category?');
+    if (!confirmed) return;
 
-   if (!confirmed) return;
+    try {
+      setDeletingId(id);
+      setError('');
+      setSuccess('');
 
-   try {
-     setDeletingId(id);
-     setError('');
-     setSuccess('');
+      const response = await api.delete(`/admin/categories/${id}`);
 
-     const response = await api.delete(`/admin/categories/${id}`);
+      console.log('Delete category:', response.data);
 
-     
+      if (!response.data.success) {
+        setError(response.data.message || 'Failed to delete category.');
 
-     console.log('Delete category:', response.data);
+        return;
+      }
 
-     if (!response.data.success) {
-       setError(response.data.message || 'Failed to delete category.');
-       return;
-     }
+      setSuccess(response.data.message || 'Category deleted successfully.');
 
-     // Remove deleted category from the UI
-     setCategories((currentCategories) =>
-       currentCategories.filter((category) => category.id !== id),
-     );
+      await fetchCategories();
+    } catch (error) {
+      console.error('Delete category error:', error);
 
-     setSuccess(response.data.message || 'Category deleted successfully.');
-   } catch (error) {
-     console.error('Delete category error:', error);
-
-     setError(error.response?.data?.message || 'Unable to delete category.');
-   } finally {
-     setDeletingId(null);
-   }
- };
+      setError(error.response?.data?.message || 'Unable to delete category.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   // SEARCH
 

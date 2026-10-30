@@ -8,7 +8,7 @@ import NewsCard from '@/components/news/NewsCard';
 import api from '@/services/api';
 
 function Home() {
-const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [news, setNews] = useState([]);
 
@@ -23,14 +23,30 @@ const [categories, setCategories] = useState([]);
 
     fetchCategories();
   }, []);
-const filteredNews =
-  selectedCategory === 'All'
-    ? news
-    : news.filter((item) => {
-        const categoryName = item.category?.name || item.category;
 
-        return categoryName?.toLowerCase() === selectedCategory.toLowerCase();
-      });
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        const response = await api.get('/news?page=1&per_page=10');
+
+        console.log('News:', response.data);
+
+        setNews(response.data.data || []);
+      } catch (error) {
+        console.error('News error:', error);
+      }
+    };
+
+    fetchNews();
+  }, []);
+  const filteredNews =
+    selectedCategory === 'All'
+      ? news
+      : news.filter((item) => {
+          const categoryName = item.category?.name || item.category;
+
+          return categoryName?.toLowerCase() === selectedCategory.toLowerCase();
+        });
 
   return (
     <>
