@@ -58,8 +58,10 @@ function AdminNews() {
   const [body, setBody] = useState('');
   const [caption, setCaption] = useState('');
   const [author, setAuthor] = useState('');
-  const [priority, setPriority] = useState(5);
+  const [priority, setPriority] = useState('medium');
   const [excerpt, setExcerpt] = useState('');
+  const [isPublished, setIsPublished] = useState(false);
+  const [isFeatured, setIsFeatured] = useState(false);
 
   // NEW IMAGE FILES
 
@@ -158,7 +160,9 @@ function AdminNews() {
     setBody('');
     setCaption('');
     setAuthor('');
-    setPriority(5);
+    setPriority('medium');
+    setIsPublished(false);
+    setIsFeatured(false);
 
     setImages([]);
     setFeaturedImage(null);
@@ -180,6 +184,16 @@ function AdminNews() {
     setShowModal(true);
   };
 
+  // PRIORITY HELPERS
+
+  const normalizePriority = (value) => {
+    const normalizedPriority = String(value ?? '').trim().toLowerCase();
+
+    return ['high', 'medium', 'low'].includes(normalizedPriority)
+      ? normalizedPriority
+      : 'medium';
+  };
+
   // OPEN EDIT MODAL
 
   const openEditModal = (article) => {
@@ -196,7 +210,20 @@ function AdminNews() {
     setBody(article.body || '');
     setCaption(article.caption || '');
     setAuthor(article.author || '');
-    setPriority(article.priority ?? 5);
+    setPriority(normalizePriority(article.priority));
+    setIsPublished(
+      article.is_published === true ||
+        article.is_published === 1 ||
+        article.is_published === '1' ||
+        article.is_published === 'true',
+    );
+
+    setIsFeatured(
+      article.is_featured === true ||
+        article.is_featured === 1 ||
+        article.is_featured === '1' ||
+        article.is_featured === 'true',
+    );
 
     // New files start empty.
     setImages([]);
@@ -232,7 +259,7 @@ function AdminNews() {
     if (!title.trim()) errors.title = 'Title is required.';
     if (!body.trim()) errors.body = 'Body is required.';
 
-    if (priority === '' || priority === null || priority === undefined) {
+    if (!['high', 'medium', 'low'].includes(priority)) {
       errors.priority = 'Priority is required.';
     }
 
@@ -257,12 +284,10 @@ function AdminNews() {
       formData.append('excerpt', excerpt.trim());
       formData.append('body', body.trim());
       formData.append('category_id', Number(categoryId));
-      formData.append('is_published', true);
-      formData.append('priority', Number(priority));
+      formData.append('is_published', isPublished);
+      formData.append('is_featured', isFeatured);
 
-      if (excerpt.trim()) {
-        formData.append('excerpt', excerpt.trim());
-      }
+      formData.append('priority', priority);
 
       if (caption.trim()) formData.append('caption', caption.trim());
       if (author.trim()) formData.append('author', author.trim());
@@ -326,14 +351,13 @@ function AdminNews() {
       formData.append('excerpt', excerpt.trim());
       formData.append('body', body.trim());
       formData.append('category_id', Number(categoryId));
-      formData.append('priority', Number(priority));
+      formData.append('is_published', isPublished);
+      formData.append('is_featured', isFeatured);
+
+      formData.append('priority', priority);
 
       formData.append('caption', caption.trim());
       formData.append('author', author.trim());
-
-      if (excerpt.trim()) {
-        formData.append('excerpt', excerpt.trim());
-      }
 
       // Send multiple images
       images.forEach((file) => {
@@ -847,7 +871,6 @@ function AdminNews() {
                           key={article.id}
                           className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                           {/* NEWS */}
-
                           <td className="px-6 py-5">
                             <div className="flex items-center gap-4">
                               <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
@@ -879,9 +902,7 @@ function AdminNews() {
                               </div>
                             </div>
                           </td>
-
                           {/* MULTIPLE IMAGES */}
-
                           <td className="px-6 py-5">
                             {articleImages.length > 0 ? (
                               <button
@@ -909,33 +930,32 @@ function AdminNews() {
                               <span className="text-xs text-slate-400">No images</span>
                             )}
                           </td>
-
                           {/* CATEGORY */}
-
                           <td className="px-6 py-5">
                             <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                               {getCategoryName(article)}
                             </span>
                           </td>
-
                           {/* AUTHOR */}
-
                           <td className="px-6 py-5 text-sm text-slate-600">
                             {article.author || article.added_by || 'Admin'}
                           </td>
-
                           {/* PRIORITY */}
-
                           <td className="px-6 py-5">
-                            <span className="font-semibold text-slate-700">
-                              {article.priority ?? '-'}
+                            <span
+                              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                                normalizePriority(article.priority) === 'high'
+                                  ? 'bg-red-50 text-red-700'
+                                  : normalizePriority(article.priority) === 'low'
+                                    ? 'bg-yellow-50 text-yellow-700'
+                                    : 'bg-blue-50 text-blue-700'
+                              }`}>
+                              {normalizePriority(article.priority).charAt(0).toUpperCase() +
+                                normalizePriority(article.priority).slice(1)}
                             </span>
                           </td>
 
                           {/* STATUS */}
-
-                          {/* STATUS */}
-
                           <td className="px-6 py-5">
                             <div className="flex items-center gap-2">
                               {article.is_published ? (
@@ -958,15 +978,11 @@ function AdminNews() {
                               )}
                             </div>
                           </td>
-
                           {/* DATE */}
-
                           <td className="px-6 py-5 text-sm text-slate-500">
                             {formatDate(article.created_at)}
                           </td>
-
                           {/* ACTIONS */}
-
                           <td className="px-6 py-5">
                             <div className="flex justify-end gap-2">
                               {/* EDIT */}
@@ -1189,22 +1205,65 @@ function AdminNews() {
                   Priority <span className="text-red-500">*</span>
                 </label>
 
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
+                <select
                   value={priority}
                   onChange={(event) => {
                     setPriority(event.target.value);
                     setFormErrors((prev) => ({ ...prev, priority: '' }));
                   }}
                   disabled={saving}
-                  className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-                />
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50">
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
 
                 {formErrors.priority && (
                   <p className="mt-1 text-xs text-red-600">{formErrors.priority}</p>
                 )}
+              </div>
+
+              {/* PUBLISH / FEATURED */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/30">
+                  <input
+                    type="checkbox"
+                    checked={isPublished}
+                    onChange={(event) => setIsPublished(event.target.checked)}
+                    disabled={saving}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Publish News</p>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      {isPublished
+                        ? 'This news will be visible to readers.'
+                        : 'This news will remain as a draft.'}
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/30">
+                  <input
+                    type="checkbox"
+                    checked={isFeatured}
+                    onChange={(event) => setIsFeatured(event.target.checked)}
+                    disabled={saving}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Featured News</p>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      {isFeatured
+                        ? 'This news can appear in the homepage hero.'
+                        : 'This news is not featured.'}
+                    </p>
+                  </div>
+                </label>
               </div>
 
               {/* EXISTING BACKEND IMAGES */}

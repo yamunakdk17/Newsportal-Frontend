@@ -1,219 +1,303 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
+import { ArrowLeft } from 'lucide-react';
 
 import Header from '@/components/layout/Header';
-import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import Trending from '@/components/news/TrendingNews';
 
 import api from '@/services/api';
+import { getNewsImageUrl, isTrue } from '@/lib/news';
+
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+
+/**
+ * Route:
+ * /news/:slug
+ *
+ * Backend:
+ * GET /api/news/{slug}
+ */
+
+/*
+ * Convert backend image path into
+ * a frontend-accessible image URL.
+ */
+/*
+ * Convert news body into paragraphs.
+ *
+ * Backend normally returns:
+ * body: "paragraph one\nparagraph two"
+ *
+ * This also supports an array if the backend
+ * ever returns body/content as an array.
+ */
+const getParagraphs = (item) => {
+  const raw = item?.content ?? item?.body ?? item?.description ?? '';
+
+  const list = Array.isArray(raw) ? raw : String(raw).split(/\n+/);
+
+  return list.map((paragraph) => String(paragraph).trim()).filter(Boolean);
+};
+
+/*
+ * Format published date.
+ */
+const formatDate = (value) => {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleDateString('ne-NP', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+};
 
 function NewsDetails() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const reduce = useReducedMotion();
 
-  const [news, setNews] = useState(null);
+  const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  /*
+   * Fetch news details from backend.
+   */
   useEffect(() => {
     const fetchNewsDetails = async () => {
       try {
         setLoading(true);
         setError('');
 
-        const response = await api.get(`/news/${slug}`);
+        const response = await api.get(`/news/${encodeURIComponent(slug)}`);
 
         console.log('News details:', response.data);
 
-        if (!response.data?.success) {
+        /*
+         * Check backend success response.
+         */
+        if (response.data?.success === false) {
           setError(response.data?.message || 'News not found.');
+
+          setArticle(null);
+
           return;
         }
 
-        setNews(response.data.data);
+        const newsArticle = response.data?.data ?? response.data ?? null;
+
+        if (!newsArticle || !isTrue(newsArticle.is_published)) {
+          setError('News not found.');
+          setArticle(null);
+          return;
+        }
+
+        setArticle(newsArticle);
       } catch (error) {
         console.error('News details error:', error);
 
         setError(error.response?.data?.message || 'Unable to load news.');
+
+        setArticle(null);
       } finally {
         setLoading(false);
       }
     };
 
+    /*
+     * Only call API when slug exists.
+     */
     if (slug) {
       fetchNewsDetails();
     }
   }, [slug]);
 
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) {
-      return '';
-    }
+  /*
+   * Scroll to top when opening
+   * another news article.
+   */
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }, [slug]);
 
-    let imageUrl = String(imagePath).trim();
+  /*
+   * Animation helper.
+   */
+  const fadeUp = (delay = 0) => ({
+    initial: reduce
+      ? false
+      : {
+          opacity: 0,
+          y: 20,
+        },
 
-    // Backend returns /storage/...
-    if (imageUrl.startsWith('/')) {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    animate: {
+      opacity: 1,
+      y: 0,
+    },
 
-      const backendUrl = apiUrl.replace(/\/api\/?$/, '');
+    transition: {
+      duration: 0.5,
+      ease: 'easeOut',
+      delay,
+    },
+  });
 
-      return `${backendUrl}${imageUrl}`;
-    }
+  /*
+   * Image from backend.
+   */
+  const image = getNewsImageUrl(article?.featured_image || article?.images?.[0]);
 
-    // Backend may return http://localhost:8000/...
-    if (
-      imageUrl.startsWith('http://localhost:') ||
-      imageUrl.startsWith('https://localhost:')
-    ) {
-      try {
-        const image = new URL(imageUrl);
-
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-
-        const backend = new URL(apiUrl.replace(/\/api\/?$/, ''));
-
-        image.protocol = backend.protocol;
-        image.hostname = backend.hostname;
-        image.port = backend.port;
-
-        return image.toString();
-      } catch {
-        return imageUrl;
-      }
-    }
-
-    return imageUrl;
-  };
-
-  // Loading
-  if (loading) {
-    return (
-      <>
-        <Header />
-        <Navbar />
-
-        <main className="mx-auto max-w-4xl px-4 py-16">
-          <div className="text-center">
-            <p className="text-gray-500">Loading news...</p>
-          </div>
-        </main>
-
-        <Footer />
-      </>
-    );
-  }
-
-  // Error / not found
-  if (error || !news) {
-    return (
-      <>
-        <Header />
-        <Navbar />
-
-        <main className="mx-auto max-w-4xl px-4 py-16">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold">News not found</h1>
-
-            <p className="mt-2 text-gray-500">
-              {error || 'This news article does not exist.'}
-            </p>
-
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="mt-6 rounded-lg bg-blue-600 px-5 py-2.5 font-semibold text-white hover:bg-blue-700">
-              Back to Home
-            </button>
-          </div>
-        </main>
-
-        <Footer />
-      </>
-    );
-  }
-
-  const featuredImage = news.featured_image || news.images?.[0] || '';
+  /*
+   * News body paragraphs.
+   */
+  const paragraphs = getParagraphs(article);
 
   return (
     <>
       <Header />
 
-      <Navbar />
+      <main className="mx-auto w-full max-w-[1920px] px-4 pb-10 sm:px-6 md:px-10 lg:px-16 xl:px-[180px] xl:pb-20">
+        {/* =========================
+            LOADING
+        ========================== */}
+        {loading && (
+          <div className="flex flex-col items-center gap-6 pt-6 sm:pt-10">
+            <Skeleton className="h-10 w-40 rounded-none sm:h-14 xl:h-[84px] xl:w-[191px]" />
 
-      <main className="mx-auto max-w-4xl px-4 py-10">
-        {/* Back */}
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="mb-6 text-sm font-semibold text-blue-600 hover:text-blue-800">
-          ← Back
-        </button>
+            <Skeleton className="aspect-[1560/900] w-full rounded-none" />
 
-        {/* Category */}
-        {news.category?.name && (
-          <p className="text-sm font-semibold uppercase text-blue-600">
-            {news.category.name}
-          </p>
+            <Skeleton className="h-10 w-3/4 sm:h-14" />
+
+            <Skeleton className="h-6 w-1/2" />
+          </div>
         )}
 
-        {/* Title */}
-        <h1 className="mt-2 text-4xl font-bold leading-tight text-gray-900">
-          {news.title}
-        </h1>
+        {/* =========================
+            ERROR / NOT FOUND
+        ========================== */}
+        {!loading && (error || !article) && (
+          <div className="flex flex-col items-center gap-4 py-20 text-center">
+            <p className="font-['Mukta',sans-serif] text-lg text-red-500 sm:text-xl">
+              {error || 'News not found.'}
+            </p>
 
-        {/* Author / date */}
-        <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-500">
-          {news.author && <span>By {news.author}</span>}
-
-          {news.published_at && (
-            <span>{new Date(news.published_at).toLocaleDateString()}</span>
-          )}
-
-          {news.added_by && <span>Added by {news.added_by}</span>}
-        </div>
-
-        {/* Featured image */}
-        {featuredImage && (
-          <img
-            src={getImageUrl(featuredImage)}
-            alt={news.title}
-            className="mt-8 max-h-[600px] w-full rounded-xl object-cover"
-          />
+            <Button type="button" variant="outline" onClick={() => navigate('/')}>
+              <ArrowLeft className="size-4" />
+              Back to home
+            </Button>
+          </div>
         )}
 
-        {/* Caption */}
-        {news.caption && (
-          <p className="mt-3 text-sm italic text-gray-500">{news.caption}</p>
-        )}
+        {/* =========================
+            ARTICLE
+        ========================== */}
+        {!loading && !error && article && (
+          <article className="flex w-full flex-col items-center gap-8 font-['Mukta',sans-serif] sm:gap-12 lg:gap-16 xl:gap-20">
+            {/* =====================
+                  CATEGORY
+              ====================== */}
+            {(article.category?.name || article.category_slug) && (
+              <motion.div
+                {...fadeUp(0)}
+                className="flex items-center gap-4 bg-[linear-gradient(90deg,rgba(33,104,205,0.2)_2.48%,rgba(17,52,103,0.2)_100%),#2168CD] px-3 py-1.5 sm:px-4 sm:py-2">
+                <span className="text-2xl font-bold leading-[1.2] tracking-[0.002em] text-[#F0F3FE] sm:text-4xl md:text-5xl xl:text-[56px] xl:leading-[67px]">
+                  {article.category?.name || article.category_slug}
+                </span>
+              </motion.div>
+            )}
 
-        {/* Full news body */}
-        {news.body && (
-          <article className="mt-8">
-            <div className="whitespace-pre-wrap text-lg leading-8 text-gray-700">
-              {news.body}
+            <div className="flex w-full flex-col items-center gap-6 sm:gap-8 xl:gap-6">
+              {/* =====================
+                    HERO BLOCK
+                ====================== */}
+              <div className="flex w-full flex-col items-center gap-2">
+                {/* Author + Date */}
+                <motion.div
+                  {...fadeUp(0.1)}
+                  className="flex w-full items-center justify-between gap-4 text-sm leading-6 tracking-[0.002em] text-[#16181A] sm:text-base">
+                  <span>{article.author || article.added_by || 'Admin'}</span>
+
+                  <span>{formatDate(article.published_at)}</span>
+                </motion.div>
+
+                <div className="flex w-full flex-col items-start gap-4 sm:gap-6">
+                  {/* Featured Image */}
+                  {image && (
+                    <motion.div {...fadeUp(0.15)} className="w-full">
+                      <AspectRatio
+                        ratio={1560 / 900}
+                        className="overflow-hidden bg-neutral-200">
+                        <img
+                          src={image}
+                          alt={article.title || 'News article'}
+                          className="h-full w-full object-cover"
+                        />
+                      </AspectRatio>
+                    </motion.div>
+                  )}
+
+                  {/* Title */}
+                  <motion.h1
+                    {...fadeUp(0.2)}
+                    className="w-full text-center text-3xl font-semibold leading-[1.2] tracking-[0.002em] text-[#16181A] sm:text-4xl md:text-5xl lg:text-6xl xl:text-[72px] xl:leading-[86px]">
+                    {article.title || 'Untitled news'}
+                  </motion.h1>
+
+                  {/* Caption */}
+                  {article.caption && (
+                    <motion.p
+                      {...fadeUp(0.25)}
+                      className="w-full text-center text-lg font-normal leading-[1.3] tracking-[0.002em] text-[#4A4E54] sm:text-xl md:text-2xl xl:text-[32px] xl:leading-[38px]">
+                      {article.caption}
+                    </motion.p>
+                  )}
+                </div>
+              </div>
+
+              {/* =====================
+                    BODY
+                ====================== */}
+              {paragraphs.length > 0 && (
+                <motion.div
+                  {...fadeUp(0.3)}
+                  className="flex w-full justify-center px-0 py-6 sm:px-4 sm:py-10 md:px-10 lg:px-24 lg:py-14 xl:px-[180px] xl:py-20">
+                  <div className="flex w-full max-w-[1200px] flex-col gap-5 sm:gap-8 xl:gap-12">
+                    {paragraphs.map((text, index) => (
+                      <p
+                        key={index}
+                        className="text-lg font-semibold leading-[1.6] tracking-[0.002em] text-[#16181A] sm:text-xl md:text-2xl lg:text-3xl lg:leading-[1.5] xl:text-[40px] xl:leading-[48px]">
+                        {text}
+                      </p>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
             </div>
           </article>
         )}
-
-        {/* Other images */}
-        {news.images?.length > 1 && (
-          <section className="mt-10">
-            <h2 className="mb-5 text-2xl font-bold">Photos</h2>
-
-            <div className="grid gap-5 sm:grid-cols-2">
-              {news.images.map((image, index) => (
-                <img
-                  key={`${image}-${index}`}
-                  src={getImageUrl(image)}
-                  alt={`${news.title} ${index + 1}`}
-                  className="h-72 w-full rounded-xl object-cover"
-                />
-              ))}
-            </div>
-          </section>
-        )}
       </main>
+      <Trending
+        onSelect={(news) => {
+          if (news?.slug) {
+            navigate(`/news/${news.slug}`);
+          }
+        }}
+      />
 
       <Footer />
     </>
