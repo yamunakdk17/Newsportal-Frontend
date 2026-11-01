@@ -1,40 +1,38 @@
 import { useEffect, useState } from 'react';
 
+import { useNavigate } from 'react-router-dom';
+
 import Header from '@/components/layout/Header';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import NewsCard from '@/components/news/NewsCard';
 
 import api from '@/services/api';
+import NewsCategory from '@/components/NewsCardhome';
+import CategoryBar from '@/components/category/CategoryCard';
 
 function Home() {
+  const navigate = useNavigate();
+
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  //for the news section//
 
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState('');
 
-  //category api call section//
   useEffect(() => {
     const fetchCategories = async () => {
       const response = await api.get('/categories?page=1&per_page=10');
-
-      console.log('Categories:', response.data);
-
       setCategories(response.data.data || []);
     };
 
     fetchCategories();
   }, []);
-  //news api call section//
+
   useEffect(() => {
     const fetchNews = async () => {
       try {
-        setNewsLoading(true);
-        setNewsError('');
-
         const response = await api.get('/news', {
           params: {
             page: 1,
@@ -42,23 +40,10 @@ function Home() {
           },
         });
 
-        console.log('News API response:', response.data);
-
-        if (response.data?.success) {
-          setNews(response.data.data || []);
-        } else {
-          setNewsError(response.data?.message || 'Unable to load news.');
-        }
-
-        if (response.data?.success) {
-          setNews(response.data.data || []);
-        } else {
-          setNewsError(response.data?.message || 'Unable to load news.');
-        }
+        setNews(Array.isArray(response.data?.data) ? response.data.data : []);
       } catch (error) {
-        console.error('News API error:', error);
-
-        setNewsError(error.response?.data?.message || 'Unable to load news.');
+        console.error('Unable to load news:', error);
+        setNewsError('Unable to load news.');
       } finally {
         setNewsLoading(false);
       }
@@ -67,62 +52,61 @@ function Home() {
     fetchNews();
   }, []);
 
-  const filteredNews =
-    selectedCategory === 'All'
-      ? news
-      : news.filter((item) => {
-          const categoryName = item.category?.name || item.category;
+  const filteredNews = news.filter((item) => {
+    if (item.is_published !== true) {
+      return false;
+    }
 
-          return categoryName?.toLowerCase() === selectedCategory.toLowerCase();
-        });
+    if (selectedCategory === 'All') {
+      return true;
+    }
+
+    const categoryValues = [
+      item.category?.id,
+      item.category?.name,
+      item.category?.slug,
+      item.category_slug,
+    ]
+      .filter((value) => value !== null && value !== undefined)
+      .map((value) => String(value).toLowerCase());
+    const selectedValues = [
+      selectedCategory.id,
+      selectedCategory.name,
+      selectedCategory.slug,
+    ]
+      .filter((value) => value !== null && value !== undefined)
+      .map((value) => String(value).toLowerCase());
+
+    return selectedValues.some((value) => categoryValues.includes(value));
+  });
 
   return (
     <>
       <Header />
 
       <Navbar />
+      <button
+        type="button"
+        onClick={() => navigate('/admin')}
+        className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
+        Admin
+      </button>
 
-      <main className="mx-auto max-w-7xl px-4 py-10">
+      <main className="w-full px-[120px] py-10">
         {/* CATEGORY SECTION */}
         <section className="mb-10">
-          <div className="mb-5">
-            <h2 className="text-2xl font-bold text-slate-900">Categories</h2>
-
-            <p className="mt-1 text-sm text-slate-500">Explore news by category</p>
-          </div>
-
           <div className="flex flex-wrap gap-3">
-            {/* ALL BUTTON */}
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('All')}
-              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
-                selectedCategory === 'All'
-                  ? 'bg-blue-600 text-white'
-                  : 'border border-slate-200 bg-white text-slate-700 hover:border-blue-600 hover:text-blue-600'
-              }`}>
-              All
-            </button>
-
             {/* CATEGORY BUTTONS */}
-            {categories.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => setSelectedCategory(category.name)}
-                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
-                  selectedCategory.toLowerCase() === category.name.toLowerCase()
-                    ? 'bg-blue-600 text-white'
-                    : 'border border-slate-200 bg-white text-slate-700 hover:border-blue-600 hover:text-blue-600'
-                }`}>
-                {category.name}
-              </button>
-            ))}
+            <CategoryBar
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onSelect={setSelectedCategory}
+            />
           </div>
         </section>
         {/* NEWS SECTION */}
 
-        <section className="space-y-6">
+        {/* <section className="space-y-6">
           <div>
             <h2 className="text-2xl font-bold">Latest News</h2>
 
@@ -141,20 +125,91 @@ function Home() {
             </div>
           )}
 
-          {!newsLoading && !newsError && news.length === 0 && (
+          {!newsLoading && !newsError && filteredNews.length === 0 && (
             <div className="py-10 text-center">
               <p className="text-gray-500">No news available.</p>
             </div>
           )}
 
-          {!newsLoading && !newsError && news.length > 0 && (
+          {!newsLoading && !newsError && filteredNews.length > 0 && (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {news.map((item) => (
-                <NewsCard key={item.id} news={item} />
-              ))}
+              {filteredNews.map((item) => {
+                // const imageUrl = item.featured_image || item.images?.[0] || '';
+                const imageUrl =
+                  'http://192.168.1.118:8000/storage/news/wkhDPZ2NhlFgssR8pVEe8ZGJuHG2xeZHcduWadjO.jpg' ||
+                  '';
+
+                return (
+                  <article
+                    key={item.id}
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => navigate(`/news/${item.slug}`)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        navigate(`/news/${item.slug}`);
+                      }
+                    }}
+                    className="cursor-pointer overflow-hidden rounded-xl bg-white shadow-sm transition hover:shadow-md">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={item.title}
+                        className="h-56 w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-56 w-full items-center justify-center bg-gray-100">
+                        <span className="text-sm text-gray-400">No image available</span>
+                      </div>
+                    )}
+
+                    <div className="p-5">
+                      {item.category?.name && (
+                        <p className="mb-2 text-sm font-semibold text-blue-600">
+                          {item.category.name}
+                        </p>
+                      )}
+
+                      <h3 className="text-xl font-bold">{item.title}</h3>
+
+                      {item.caption && (
+                        <p className="mt-2 text-sm text-gray-500">{item.caption}</p>
+                      )}
+
+                      {item.author && (
+                        <p className="mt-3 text-sm text-gray-500">By {item.author}</p>
+                      )}
+
+                      {item.published_at && (
+                        <p className="mt-1 text-xs text-gray-400">
+                          {new Date(item.published_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
-        </section>
+        </section> */}
+
+        {/* NEWS SECTION */}
+        <NewsCategory
+          categoryName={
+            selectedCategory === 'All' ? 'Latest News' : selectedCategory.name
+          }
+          groupByCategory={selectedCategory === 'All'}
+          news={filteredNews}
+          loading={newsLoading}
+          error={newsError}
+          getImageUrl={(item) =>
+            // const imageUrl = item.featured_image || item.images?.[0] || '';
+            'http://192.168.1.118:8000/storage/news/wkhDPZ2NhlFgssR8pVEe8ZGJuHG2xeZHcduWadjO.jpg' ||
+            ''
+          }
+          onSelect={(item) => navigate(`/news/${item.slug}`)}
+        />
       </main>
 
       <Footer />

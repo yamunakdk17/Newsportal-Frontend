@@ -10,6 +10,7 @@ import NotFound from '@/pages/NotFound';
 
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
+import Test from '@/pages/Test';
 
 function AppRoutes() {
   return (
@@ -32,6 +33,7 @@ function AppRoutes() {
         <Route path="/admin/categories" element={<AdminCategories />} />
       </Route>
       <Route path="/admin/news" element={<AdminNews />} />
+      <Route path="/test" element={<Test />} />
 
       {/* Any unknown/random URL */}
       <Route path="*" element={<NotFound />} />

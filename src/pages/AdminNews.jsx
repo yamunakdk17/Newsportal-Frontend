@@ -373,6 +373,51 @@ function AdminNews() {
     }
   };
 
+  //publish the news//
+
+  const handlePublishNews = async (postId) => {
+    try {
+      setError('');
+      setSuccess('');
+
+      console.log('Publishing post:', postId);
+
+      const response = await api.put(`/admin/posts/${postId}`, {
+        is_published: true,
+      });
+
+      console.log('Publish response:', response.data);
+
+      if (!response.data?.success) {
+        setError(response.data?.message || 'Unable to publish news.');
+
+        return;
+      }
+
+      // Update only the published post in React state.
+      // No page refresh and no fetchNews() call.
+      setNews((currentNews) =>
+        currentNews.map((article) =>
+          article.id === postId
+            ? {
+                ...article,
+                is_published: true,
+                published_at: response.data?.data?.published_at || article.published_at,
+              }
+            : article,
+        ),
+      );
+
+      setSuccess(response.data?.message || 'News published successfully.');
+    } catch (error) {
+      console.error('Publish news error:', error);
+
+      console.log('Publish backend response:', error.response?.data);
+
+      setError(error.response?.data?.message || 'Unable to publish news.');
+    }
+  };
+
   // DELETE NEWS
 
   const handleDeleteNews = async (article) => {
@@ -905,10 +950,8 @@ function AdminNews() {
 
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      console.log('Publish news:', article.id);
-                                    }}
-                                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700">
+                                    onClick={() => handlePublishNews(article.id)}
+                                    className="rounded-lg bg-blue-400 px-2 py-2 text-white hover:bg-green-700 disabled:opacity-50">
                                     Publish
                                   </button>
                                 </>
@@ -980,7 +1023,7 @@ function AdminNews() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl scrollbar-hidden bg-white shadow-2xl">
             {/* MODAL HEADER */}
 
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-5">

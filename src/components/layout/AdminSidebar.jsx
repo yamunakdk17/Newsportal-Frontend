@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Folder, Image, LogOut } from 'lucide-react';
+import { LayoutDashboard, Folder, Newspaper, Image, LogOut } from 'lucide-react';
 
 function AdminSidebar() {
   const navigate = useNavigate();
@@ -23,15 +23,14 @@ function AdminSidebar() {
       path: '/admin/categories',
       icon: Folder,
     },
-
-    {
-      label: 'Banners',
-      path: '/admin/banners',
-      icon: Image,
-    },
     {
       label: 'News',
       path: '/admin/news',
+      icon: Newspaper,
+    },
+    {
+      label: 'Banners',
+      path: '/admin/banners',
       icon: Image,
     },
   ];
