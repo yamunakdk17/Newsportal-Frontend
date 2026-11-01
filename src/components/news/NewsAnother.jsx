@@ -4,6 +4,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
+import { getNewsImageUrl, getNewsList, isPublishedNews } from '@/lib/news';
 
 /**
  * Props:
@@ -50,7 +51,7 @@ function Card({ story, ratio, variants, getImageUrl, onSelect, className = '' })
   );
 }
 
-export default function NewsPost({ onSelect = () => {} }) {
+export default function NewsPost({ onSelect = () => {}, newsData }) {
   const reduce = useReducedMotion();
 
   const [news, setNews] = useState([]);
@@ -60,6 +61,10 @@ export default function NewsPost({ onSelect = () => {} }) {
    * Fetch news from backend
    */
   useEffect(() => {
+    if (Array.isArray(newsData)) {
+      return;
+    }
+
     const fetchNews = async () => {
       try {
         setLoading(true);
@@ -67,16 +72,9 @@ export default function NewsPost({ onSelect = () => {} }) {
         const response = await api.get('/news', {
           params: {
             page: 1,
-            per_page: 10,
+            per_page: 8,
           },
         });
-
-        const newsData = Array.isArray(response.data?.data) ? response.data.data : [];
-
-        /*
-         * Only published news
-         */
-        const publishedNews = newsData.filter((item) => item.is_published === true);
 
         /*
          * We need only 3 stories:
@@ -85,7 +83,7 @@ export default function NewsPost({ onSelect = () => {} }) {
          * news[1] = left
          * news[2] = right
          */
-        setNews(publishedNews.slice(0, 3));
+        setNews(getNewsList(response).filter(isPublishedNews).slice(0, 3));
       } catch (error) {
         console.error('Unable to load news:', error);
 
@@ -96,36 +94,13 @@ export default function NewsPost({ onSelect = () => {} }) {
     };
 
     fetchNews();
-  }, []);
+  }, [newsData]);
 
   /*
    * Backend image URL
    */
-  const getImageUrl = (item) => {
-    const imagePath = item?.featured_image || item?.images?.[0] || '';
-
-    if (!imagePath) {
-      return '';
-    }
-
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-
-    const backendUrl = apiUrl.replace(/\/api\/?$/, '');
-
-    if (imagePath.startsWith('http://localhost:8000')) {
-      return imagePath.replace('http://localhost:8000', backendUrl);
-    }
-
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return imagePath;
-    }
-
-    if (imagePath.startsWith('/')) {
-      return `${backendUrl}${imagePath}`;
-    }
-
-    return `${backendUrl}/${imagePath}`;
-  };
+  const getImageUrl = (item) =>
+    getNewsImageUrl(item?.featured_image || item?.images?.[0]);
 
   const container = {
     hidden: {},
@@ -158,7 +133,7 @@ export default function NewsPost({ onSelect = () => {} }) {
   /*
    * Loading UI
    */
-  if (loading) {
+  if (!Array.isArray(newsData) && loading) {
     return (
       <div className={gridClass}>
         <Skeleton className="aspect-[402/502] w-full rounded-none md:col-span-2 md:order-first lg:order-none lg:col-span-1" />
@@ -170,7 +145,10 @@ export default function NewsPost({ onSelect = () => {} }) {
     );
   }
 
-  const [main, left, right] = news;
+  const stories = Array.isArray(newsData)
+    ? newsData.filter(isPublishedNews).slice(0, 3)
+    : news;
+  const [main, left, right] = stories;
 
   if (!main) {
     return null;

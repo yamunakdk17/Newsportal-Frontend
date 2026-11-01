@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import api from '@/services/api';
-import { getNewsImageUrl, isTrue } from '@/lib/news';
+import {
+  getNewsImageUrl,
+  getNewsList,
+  isPublishedNews,
+} from '@/lib/news';
 
-function NewsSection({ selectedCategory }) {
+function NewsSection({ selectedCategory, newsData }) {
   const navigate = useNavigate();
 
   const [news, setNews] = useState([]);
@@ -12,6 +16,10 @@ function NewsSection({ selectedCategory }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (Array.isArray(newsData)) {
+      return;
+    }
+
     const fetchNews = async () => {
       try {
         setLoading(true);
@@ -20,13 +28,11 @@ function NewsSection({ selectedCategory }) {
         const response = await api.get('/news', {
           params: {
             page: 1,
-            per_page: 50,
+            per_page: 8,
           },
         });
 
-        const newsData = Array.isArray(response.data?.data) ? response.data.data : [];
-
-        setNews(newsData);
+        setNews(getNewsList(response));
       } catch (error) {
         console.error('Unable to load news:', error);
         setError('Unable to load news.');
@@ -36,11 +42,11 @@ function NewsSection({ selectedCategory }) {
     };
 
     fetchNews();
-  }, []);
+  }, [newsData]);
 
-  const filteredNews = news.filter((item) => {
-    // Only show published news
-    if (!isTrue(item?.is_published)) {
+  const sourceNews = Array.isArray(newsData) ? newsData : news;
+  const filteredNews = sourceNews.filter((item) => {
+    if (!isPublishedNews(item)) {
       return false;
     }
 
@@ -73,7 +79,7 @@ function NewsSection({ selectedCategory }) {
   const getImageUrl = (item) =>
     getNewsImageUrl(item?.featured_image || item?.images?.[0]);
 
-  if (loading) {
+  if (!Array.isArray(newsData) && loading) {
     return (
       <section className="py-10 text-center">
         <p className="text-gray-500">Loading news...</p>

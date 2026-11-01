@@ -1,33 +1,37 @@
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 /**
- * Fonts required (load once in index.html / CSS):
- *  - Hind (700)               -> logo
- *  - Mukta (400, 600)         -> everything else
+ * Compact footer.
  *
- * Text sizes are intentionally one Tailwind step smaller than the Figma values.
+ * UI/design is unchanged.
+ *
+ * Fonts required:
+ *  - Hind (700) -> logo
+ *  - Geist (600) -> headings
+ *  - Mukta (400) -> content
  */
 
-/* ---------- social icons (outline style from the design) ---------- */
+/* ---------- social icons ---------- */
+
 const iconProps = {
   viewBox: '0 0 24 24',
   fill: 'none',
   stroke: 'currentColor',
-  strokeWidth: 1.2,
+  strokeWidth: 1.6,
   strokeLinecap: 'round',
   strokeLinejoin: 'round',
   'aria-hidden': true,
-  className: 'size-full',
+  className: 'size-6',
 };
 
 const InstagramIcon = () => (
   <svg {...iconProps}>
     <rect x="3" y="3" width="18" height="18" rx="5" />
     <circle cx="12" cy="12" r="4.2" />
-    <circle cx="17.2" cy="6.8" r="0.6" fill="currentColor" />
+    <circle cx="17.2" cy="6.8" r="0.7" fill="currentColor" />
   </svg>
 );
 
@@ -58,41 +62,99 @@ const YoutubeIcon = () => (
   </svg>
 );
 
-/* ---------- default content (override through props) ---------- */
+/* ---------- footer links ---------- */
+
+/*
+  These now use your actual category routes.
+
+  Example:
+  Politics -> /category/politics
+  Sports -> /category/sports
+  Technology -> /category/technology
+*/
+
 const defaultExplore = [
-  { label: 'Politics', to: '#' },
-  { label: 'Business', to: '#' },
-  { label: 'Sports', to: '#' },
-  { label: 'Technology', to: '#' },
+  {
+    label: 'Politics',
+    to: '/category/politics',
+  },
+  {
+    label: 'Business',
+    to: '/category/business',
+  },
+  {
+    label: 'Sports',
+    to: '/category/sports',
+  },
+  {
+    label: 'Technology',
+    to: '/category/technology',
+  },
 ];
 
 const defaultCompany = [
-  { label: 'Advertise', to: '#' },
-  { label: 'Support Us', to: '#' },
-  { label: 'Contact Us', to: '#' },
-  { label: 'Editorial Policy', to: '#' },
+  {
+    label: 'Advertise',
+    to: '#',
+  },
+  {
+    label: 'Support Us',
+    to: '#',
+  },
+  {
+    label: 'Contact Us',
+    to: '#',
+  },
+  {
+    label: 'Editorial Policy',
+    to: '#',
+  },
 ];
 
 const defaultSocials = [
-  { label: 'Instagram', href: '#', Icon: InstagramIcon },
-  { label: 'TikTok', href: '#', Icon: TiktokIcon },
-  { label: 'Facebook', href: '#', Icon: FacebookIcon },
-  { label: 'X', href: '#', Icon: XIcon },
-  { label: 'YouTube', href: '#', Icon: YoutubeIcon },
+  {
+    label: 'Instagram',
+    href: '#',
+    Icon: InstagramIcon,
+  },
+  {
+    label: 'TikTok',
+    href: '#',
+    Icon: TiktokIcon,
+  },
+  {
+    label: 'Facebook',
+    href: '#',
+    Icon: FacebookIcon,
+  },
+  {
+    label: 'X',
+    href: '#',
+    Icon: XIcon,
+  },
+  {
+    label: 'YouTube',
+    href: '#',
+    Icon: YoutubeIcon,
+  },
 ];
 
 const headingClass =
-  "font-['Mukta',sans-serif] text-lg font-semibold uppercase leading-tight tracking-[0.002em] text-[#DEE5FD] sm:text-xl xl:text-2xl";
+  "font-['Geist',sans-serif] text-base font-semibold uppercase leading-[21px] tracking-[0.002em] text-[#DEE5FD] sm:text-lg xl:text-xl";
+
 const linkClass =
-  "inline-block font-['Mukta',sans-serif] text-sm font-normal leading-[21px] tracking-[0.002em] text-[#DEE5FD] transition-colors hover:text-white hover:underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-[#DEE5FD] focus-visible:ring-offset-2 focus-visible:ring-offset-[#164B99]";
+  "inline-block font-['Mukta',sans-serif] text-sm font-normal leading-[21px] tracking-[0.002em] text-[#DEE5FD] underline-offset-4 outline-none transition-colors hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-[#DEE5FD] focus-visible:ring-offset-2 focus-visible:ring-offset-[#164B99] sm:text-base";
+
+/* ---------- link column ---------- */
 
 function LinkColumn({ title, links, className = '', item }) {
   return (
     <motion.div
       variants={item}
-      className={`flex flex-col items-start gap-4 sm:gap-5 xl:gap-6 ${className}`}>
+      className={`flex flex-col items-start gap-3 sm:gap-4 ${className}`}>
       <h3 className={headingClass}>{title}</h3>
-      <ul className="flex flex-col gap-4 xl:gap-6">
+
+      <ul className="flex flex-col gap-3">
         {links.map((link) => (
           <li key={link.label}>
             <motion.span
@@ -110,54 +172,88 @@ function LinkColumn({ title, links, className = '', item }) {
   );
 }
 
+/* ---------- footer ---------- */
+
 export default function Footer({
   logoText = 'मनरा शिस्वा खबर',
-  description = 'Your Trusted Source for Local News, Community Stories, and Unbiased Journalism. From Manara to the World, We Bring You the Latest Updates, Local Voices, and Stories That Matter. We Don’t Just Report the News; We Connect Communities, Raise Awareness, and Keep You Informed.',
+
+  tagline = 'Your trusted voice for local news, community stories, and stories that matter.',
+
   exploreLinks = defaultExplore,
+
   companyLinks = defaultCompany,
+
   socials = defaultSocials,
 }) {
   const reduce = useReducedMotion();
 
   const container = {
     hidden: {},
-    show: { transition: { staggerChildren: reduce ? 0 : 0.12 } },
+
+    show: {
+      transition: {
+        staggerChildren: reduce ? 0 : 0.12,
+      },
+    },
   };
+
   const item = {
-    hidden: { opacity: reduce ? 1 : 0, y: reduce ? 0 : 16 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+    hidden: {
+      opacity: reduce ? 1 : 0,
+      y: reduce ? 0 : 16,
+    },
+
+    show: {
+      opacity: 1,
+      y: 0,
+
+      transition: {
+        duration: 0.5,
+        ease: 'easeOut',
+      },
+    },
   };
 
   return (
-    <footer className="w-full bg-[#164B99] px-4 py-8 sm:px-6 sm:py-10 md:px-10 lg:px-16 xl:px-[120px] xl:py-10">
+    <footer className="w-full bg-[#164B99] px-4 py-8 sm:px-6 sm:py-10 md:px-10 lg:px-16 xl:px-[120px]">
       <motion.div
         variants={container}
         initial="hidden"
         whileInView="show"
-        viewport={{ once: true, amount: 0.15 }}
-        className="mx-auto flex w-full max-w-[1680px] flex-col">
+        viewport={{
+          once: true,
+          amount: 0.15,
+        }}
+        className="mx-auto flex w-full max-w-[1680px] flex-col gap-6 sm:gap-8 xl:gap-10">
         {/* Brand + link columns */}
-        <div className="flex flex-col gap-10 py-6 sm:py-8 lg:flex-row lg:items-center lg:justify-between lg:gap-16 xl:p-10">
+
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-16">
+          {/* Brand */}
+
           <motion.div
             variants={item}
-            className="flex w-full max-w-md flex-col items-start gap-4 sm:gap-6 lg:max-w-[366px]">
+            className="flex w-full max-w-md flex-col items-start gap-3 sm:gap-4 lg:max-w-[366px]">
             <Link
               to="/"
-              className="font-['Hind',sans-serif] text-3xl font-bold leading-[1.4] tracking-[0.002em] text-[#F0F3FE] outline-none focus-visible:ring-2 focus-visible:ring-[#DEE5FD] focus-visible:ring-offset-2 focus-visible:ring-offset-[#164B99] sm:text-4xl lg:text-5xl">
+              className="font-['Hind',sans-serif] text-2xl font-bold leading-tight tracking-[0.002em] text-[#F0F3FE] outline-none focus-visible:ring-2 focus-visible:ring-[#DEE5FD] focus-visible:ring-offset-2 focus-visible:ring-offset-[#164B99] sm:text-3xl xl:text-[32px] xl:leading-[86px]">
               {logoText}
             </Link>
-            <p className="font-['Mukta',sans-serif] text-sm leading-6 tracking-[0.002em] text-[#DEE5FD] sm:text-base xl:text-lg">
-              {description}
+
+            <p className="font-['Mukta',sans-serif] text-base leading-6 tracking-[0.002em] text-[#DEE5FD] sm:text-lg xl:text-xl">
+              {tagline}
             </p>
           </motion.div>
 
-          <div className="flex w-full flex-row gap-10 sm:gap-20 lg:w-auto lg:justify-end xl:gap-[120px]">
+          {/* Explore + Company */}
+
+          <div className="flex w-full flex-row gap-12 sm:gap-20 lg:w-auto lg:justify-end xl:gap-[120px]">
             <LinkColumn
               title="Explore"
               links={exploreLinks}
               item={item}
               className="xl:w-[163px]"
             />
+
             <LinkColumn
               title="Company"
               links={companyLinks}
@@ -168,30 +264,36 @@ export default function Footer({
         </div>
 
         {/* Divider + bottom bar */}
+
         <motion.div variants={item}>
           <Separator className="bg-[#DEE5FD]" />
-          <div className="flex flex-col-reverse items-start gap-4 px-0 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6 xl:px-4 xl:py-2">
-            <p className="font-['Mukta',sans-serif] text-xs uppercase leading-6 tracking-[0.002em] text-[#DEE5FD] sm:text-sm">
+
+          <div className="flex flex-col-reverse items-start gap-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+            <p className="font-['Mukta',sans-serif] text-xs uppercase leading-6 tracking-[0.002em] text-[#DEE5FD] sm:text-sm xl:text-base">
               © {new Date().getFullYear()} {logoText}. All rights reserved
             </p>
 
-            <ul className="flex items-center gap-2 sm:gap-4 xl:gap-6">
+            <ul className="flex items-center gap-1 sm:gap-3 xl:gap-6">
               {socials.map(({ label, href, Icon }) => (
                 <li key={label}>
-                  <motion.div whileHover={{ y: -3 }} transition={{ duration: 0.2 }}>
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={label}
-                      className={buttonVariants({
-                        variant: 'ghost',
-                        size: 'icon',
-                        className:
-                          'size-9 rounded-md p-1 text-[#DEE5FD] hover:bg-white/10 hover:text-white sm:size-10',
-                      })}>
-                      <Icon />
-                    </a>
+                  <motion.div
+                    whileHover={{ y: -3 }}
+                    transition={{
+                      duration: 0.2,
+                    }}>
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 rounded-md p-0 text-[#DEE5FD] hover:bg-white/10 hover:text-white xl:size-6">
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={label}>
+                        <Icon />
+                      </a>
+                    </Button>
                   </motion.div>
                 </li>
               ))}

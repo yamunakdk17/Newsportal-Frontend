@@ -1,44 +1,39 @@
 import { Routes, Route } from 'react-router-dom';
 
 import Home from '@/pages/Home';
+import Category from '@/pages/Category';
 import NewsDetails from '@/pages/NewsDetails';
 import Login from '@/pages/Login';
 import Admin from '@/pages/Admin';
-import AdminCategories from '@/pages/AdminCategories';
 import AdminNews from '@/pages/AdminNews';
-import NotFound from '@/pages/NotFound';
+import AdminCategories from '@/pages/AdminCategories';
+import AdminBanners from '@/pages/AdminBanners';
 
-import ProtectedRoute from './ProtectedRoute';
-import PublicRoute from './PublicRoute';
-import Test from '@/pages/Test';
-
-function AppRoutes() {
+export default function AppRoutes() {
   return (
     <Routes>
-      {/* Home */}
+      {/* Public */}
       <Route path="/" element={<Home />} />
+
+      {/* Category */}
+      <Route path="/category/:slug" element={<Category />} />
 
       {/* News Details */}
       <Route path="/news/:slug" element={<NewsDetails />} />
 
-      {/* Login - only for users who are NOT logged in */}
-      <Route element={<PublicRoute />}>
-        <Route path="/login" element={<Login />} />
-      </Route>
+      {/* Login */}
+      <Route path="/login" element={<Login />} />
 
-      {/* Admin - only for logged-in users */}
-      <Route element={<ProtectedRoute />}>
-        <Route path="/admin" element={<Admin />} />
+      {/* Admin */}
+      <Route path="/admin" element={<Admin />} />
 
-        <Route path="/admin/categories" element={<AdminCategories />} />
-      </Route>
+      {/* Admin News */}
       <Route path="/admin/news" element={<AdminNews />} />
-      <Route path="/test" element={<Test />} />
 
-      {/* Any unknown/random URL */}
-      <Route path="*" element={<NotFound />} />
+      {/* Admin Categories */}
+      <Route path="/admin/categories" element={<AdminCategories />} />
+
+      <Route path="/admin/banners" element={<AdminBanners />} />
     </Routes>
   );
 }
-
-export default AppRoutes;

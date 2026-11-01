@@ -5,10 +5,10 @@ import { ArrowLeft } from 'lucide-react';
 
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+
 import Trending from '@/components/news/TrendingNews';
 
 import api from '@/services/api';
-import { getNewsImageUrl, isTrue } from '@/lib/news';
 
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,62 @@ import { Skeleton } from '@/components/ui/skeleton';
  * Convert backend image path into
  * a frontend-accessible image URL.
  */
+const getImageUrl = (imagePath) => {
+  if (!imagePath) {
+    return '';
+  }
+
+  let imageUrl = String(imagePath).trim();
+
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
+  const backendUrl = apiUrl.replace(/\/api\/?$/, '');
+
+  /*
+   * Backend returns:
+   * /storage/news/image.jpg
+   */
+  if (imageUrl.startsWith('/')) {
+    return `${backendUrl}${imageUrl}`;
+  }
+
+  /*
+   * Backend may return:
+   * http://localhost:8000/storage/news/image.jpg
+   *
+   * Change localhost to the actual backend host.
+   */
+  if (
+    imageUrl.startsWith('http://localhost:') ||
+    imageUrl.startsWith('https://localhost:')
+  ) {
+    try {
+      const image = new URL(imageUrl);
+      const backend = new URL(backendUrl);
+
+      image.protocol = backend.protocol;
+      image.hostname = backend.hostname;
+      image.port = backend.port;
+
+      return image.toString();
+    } catch {
+      return imageUrl;
+    }
+  }
+
+  /*
+   * Already a complete URL.
+   */
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+
+  /*
+   * Relative path.
+   */
+  return `${backendUrl}/${imageUrl}`;
+};
+
 /*
  * Convert news body into paragraphs.
  *
@@ -46,21 +102,14 @@ const getParagraphs = (item) => {
 /*
  * Format published date.
  */
-const formatDate = (value) => {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime())
-    ? ''
-    : date.toLocaleDateString('ne-NP', {
+const formatDate = (value) =>
+  value
+    ? new Date(value).toLocaleDateString('ne-NP', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
-      });
-};
+      })
+    : '';
 
 function NewsDetails() {
   const { slug } = useParams();
@@ -80,14 +129,14 @@ function NewsDetails() {
         setLoading(true);
         setError('');
 
-        const response = await api.get(`/news/${encodeURIComponent(slug)}`);
+        const response = await api.get(`/news/${slug}`);
 
         console.log('News details:', response.data);
 
         /*
          * Check backend success response.
          */
-        if (response.data?.success === false) {
+        if (!response.data?.success) {
           setError(response.data?.message || 'News not found.');
 
           setArticle(null);
@@ -95,15 +144,14 @@ function NewsDetails() {
           return;
         }
 
-        const newsArticle = response.data?.data ?? response.data ?? null;
+        /*
+         * Store complete news object.
+         */
+        setArticle(response.data.data || null);
 
-        if (!newsArticle || !isTrue(newsArticle.is_published)) {
+        if (!response.data.data) {
           setError('News not found.');
-          setArticle(null);
-          return;
         }
-
-        setArticle(newsArticle);
       } catch (error) {
         console.error('News details error:', error);
 
@@ -160,7 +208,7 @@ function NewsDetails() {
   /*
    * Image from backend.
    */
-  const image = getNewsImageUrl(article?.featured_image || article?.images?.[0]);
+  const image = getImageUrl(article?.featured_image || article?.images?.[0] || '');
 
   /*
    * News body paragraphs.
@@ -211,12 +259,12 @@ function NewsDetails() {
             {/* =====================
                   CATEGORY
               ====================== */}
-            {(article.category?.name || article.category_slug) && (
+            {article.category?.name && (
               <motion.div
                 {...fadeUp(0)}
                 className="flex items-center gap-4 bg-[linear-gradient(90deg,rgba(33,104,205,0.2)_2.48%,rgba(17,52,103,0.2)_100%),#2168CD] px-3 py-1.5 sm:px-4 sm:py-2">
                 <span className="text-2xl font-bold leading-[1.2] tracking-[0.002em] text-[#F0F3FE] sm:text-4xl md:text-5xl xl:text-[56px] xl:leading-[67px]">
-                  {article.category?.name || article.category_slug}
+                  {article.category.name}
                 </span>
               </motion.div>
             )}
@@ -230,7 +278,7 @@ function NewsDetails() {
                 <motion.div
                   {...fadeUp(0.1)}
                   className="flex w-full items-center justify-between gap-4 text-sm leading-6 tracking-[0.002em] text-[#16181A] sm:text-base">
-                  <span>{article.author || article.added_by || 'Admin'}</span>
+                  <span>{article.author}</span>
 
                   <span>{formatDate(article.published_at)}</span>
                 </motion.div>
@@ -244,7 +292,7 @@ function NewsDetails() {
                         className="overflow-hidden bg-neutral-200">
                         <img
                           src={image}
-                          alt={article.title || 'News article'}
+                          alt={article.title}
                           className="h-full w-full object-cover"
                         />
                       </AspectRatio>
@@ -255,7 +303,7 @@ function NewsDetails() {
                   <motion.h1
                     {...fadeUp(0.2)}
                     className="w-full text-center text-3xl font-semibold leading-[1.2] tracking-[0.002em] text-[#16181A] sm:text-4xl md:text-5xl lg:text-6xl xl:text-[72px] xl:leading-[86px]">
-                    {article.title || 'Untitled news'}
+                    {article.title}
                   </motion.h1>
 
                   {/* Caption */}
@@ -291,13 +339,7 @@ function NewsDetails() {
           </article>
         )}
       </main>
-      <Trending
-        onSelect={(news) => {
-          if (news?.slug) {
-            navigate(`/news/${news.slug}`);
-          }
-        }}
-      />
+      <Trending />
 
       <Footer />
     </>

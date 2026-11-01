@@ -17,41 +17,55 @@ import api from '@/services/api';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 
 function AdminNews() {
+  // =========================================================
   // DATA
+  // =========================================================
 
   const [news, setNews] = useState([]);
   const [categories, setCategories] = useState([]);
 
+  // =========================================================
   // LOADING
+  // =========================================================
 
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
+  // =========================================================
   // MESSAGES
+  // =========================================================
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [formErrors, setFormErrors] = useState({});
 
+  // =========================================================
   // SEARCH
+  // =========================================================
 
   const [search, setSearch] = useState('');
 
+  // =========================================================
   // CREATE / EDIT MODAL
+  // =========================================================
 
   const [showModal, setShowModal] = useState(false);
   const [editingNews, setEditingNews] = useState(null);
 
-  // IMAGE GALLERY MODAL
+  // =========================================================
+  // IMAGE GALLERY
+  // =========================================================
 
   const [showGallery, setShowGallery] = useState(false);
   const [galleryImages, setGalleryImages] = useState([]);
   const [galleryTitle, setGalleryTitle] = useState('');
   const [galleryIndex, setGalleryIndex] = useState(0);
 
+  // =========================================================
   // FORM
+  // =========================================================
 
   const [categoryId, setCategoryId] = useState('');
   const [title, setTitle] = useState('');
@@ -63,17 +77,53 @@ function AdminNews() {
   const [isPublished, setIsPublished] = useState(false);
   const [isFeatured, setIsFeatured] = useState(false);
 
+  // =========================================================
   // NEW IMAGE FILES
+  // =========================================================
 
   const [images, setImages] = useState([]);
   const [featuredImage, setFeaturedImage] = useState(null);
 
+  // =========================================================
   // IMAGE PREVIEWS
+  // =========================================================
 
   const [imagePreviews, setImagePreviews] = useState([]);
   const [featuredPreview, setFeaturedPreview] = useState('');
 
+  // =========================================================
+  // HELPERS
+  // =========================================================
+
+  const isTrue = (value) => {
+    return value === true || value === 1 || value === '1' || value === 'true';
+  };
+
+  const normalizePriority = (value) => {
+    const normalized = String(value ?? '')
+      .trim()
+      .toLowerCase();
+
+    return ['high', 'medium', 'low'].includes(normalized) ? normalized : 'medium';
+  };
+
+  const getBackendError = (error) => {
+    const backendErrors = error.response?.data?.errors;
+
+    if (backendErrors) {
+      const firstError = Object.values(backendErrors)?.[0]?.[0];
+
+      if (firstError) {
+        return firstError;
+      }
+    }
+
+    return error.response?.data?.message || 'Something went wrong. Please try again.';
+  };
+
+  // =========================================================
   // IMAGE URL
+  // =========================================================
 
   const getImageUrl = (imagePath) => {
     if (!imagePath) {
@@ -91,24 +141,40 @@ function AdminNews() {
     return `${baseUrl}/storage/${String(imagePath).replace(/^\/+/, '')}`;
   };
 
+  // =========================================================
   // FETCH NEWS
+  // =========================================================
 
   const fetchNews = async () => {
     try {
       setLoading(true);
       setError('');
 
-      const response = await api.get('/admin/posts');
+      const response = await api.get('/admin/posts', {
+        params: {
+          page: 1,
+          per_page: 50,
+        },
+      });
 
       console.log('Admin news response:', response.data);
 
       if (!response.data?.success) {
         setError(response.data?.message || 'Unable to load news posts.');
-
         return;
       }
 
-      setNews(response.data.data || []);
+      const responseData = response.data?.data;
+
+      let posts = [];
+
+      if (Array.isArray(responseData)) {
+        posts = responseData;
+      } else if (Array.isArray(responseData?.data)) {
+        posts = responseData.data;
+      }
+
+      setNews(posts);
     } catch (error) {
       console.error('News fetch error:', error);
 
@@ -118,23 +184,39 @@ function AdminNews() {
     }
   };
 
+  // =========================================================
   // FETCH CATEGORIES
+  // =========================================================
 
   const fetchCategories = async () => {
     try {
       setCategoriesLoading(true);
 
-      const response = await api.get('/admin/categories');
+      const response = await api.get('/admin/categories', {
+        params: {
+          page: 1,
+          per_page: 100,
+        },
+      });
 
       console.log('Admin categories response:', response.data);
 
       if (!response.data?.success) {
         setError(response.data?.message || 'Unable to load categories.');
-
         return;
       }
 
-      setCategories(response.data.data || []);
+      const responseData = response.data?.data;
+
+      let categoryList = [];
+
+      if (Array.isArray(responseData)) {
+        categoryList = responseData;
+      } else if (Array.isArray(responseData?.data)) {
+        categoryList = responseData.data;
+      }
+
+      setCategories(categoryList);
     } catch (error) {
       console.error('Category fetch error:', error);
 
@@ -144,14 +226,18 @@ function AdminNews() {
     }
   };
 
+  // =========================================================
   // INITIAL LOAD
+  // =========================================================
 
   useEffect(() => {
     fetchNews();
     fetchCategories();
   }, []);
 
+  // =========================================================
   // RESET FORM
+  // =========================================================
 
   const resetForm = () => {
     setCategoryId('');
@@ -169,9 +255,13 @@ function AdminNews() {
 
     setImagePreviews([]);
     setFeaturedPreview('');
+
+    setFormErrors({});
   };
 
+  // =========================================================
   // OPEN CREATE MODAL
+  // =========================================================
 
   const openCreateModal = () => {
     setEditingNews(null);
@@ -184,17 +274,9 @@ function AdminNews() {
     setShowModal(true);
   };
 
-  // PRIORITY HELPERS
-
-  const normalizePriority = (value) => {
-    const normalizedPriority = String(value ?? '').trim().toLowerCase();
-
-    return ['high', 'medium', 'low'].includes(normalizedPriority)
-      ? normalizedPriority
-      : 'medium';
-  };
-
+  // =========================================================
   // OPEN EDIT MODAL
+  // =========================================================
 
   const openEditModal = (article) => {
     setEditingNews(article);
@@ -209,35 +291,31 @@ function AdminNews() {
     setExcerpt(article.excerpt || '');
     setBody(article.body || '');
     setCaption(article.caption || '');
-    setAuthor(article.author || '');
-    setPriority(normalizePriority(article.priority));
-    setIsPublished(
-      article.is_published === true ||
-        article.is_published === 1 ||
-        article.is_published === '1' ||
-        article.is_published === 'true',
-    );
+    setAuthor(article.author || article.added_by || '');
 
-    setIsFeatured(
-      article.is_featured === true ||
-        article.is_featured === 1 ||
-        article.is_featured === '1' ||
-        article.is_featured === 'true',
-    );
+    setPriority(normalizePriority(article.priority));
+
+    setIsPublished(isTrue(article.is_published));
+
+    setIsFeatured(isTrue(article.is_featured));
 
     // New files start empty.
     setImages([]);
     setFeaturedImage(null);
+
     setImagePreviews([]);
     setFeaturedPreview('');
 
+    setFormErrors({});
     setError('');
     setSuccess('');
 
     setShowModal(true);
   };
 
+  // =========================================================
   // CLOSE MODAL
+  // =========================================================
 
   const closeModal = () => {
     if (saving) {
@@ -250,47 +328,70 @@ function AdminNews() {
     resetForm();
   };
 
+  // =========================================================
   // VALIDATE FORM
+  // =========================================================
 
   const validateForm = () => {
     const errors = {};
 
-    if (!categoryId) errors.categoryId = 'Please select a category.';
-    if (!title.trim()) errors.title = 'Title is required.';
-    if (!body.trim()) errors.body = 'Body is required.';
+    if (!categoryId) {
+      errors.categoryId = 'Please select a category.';
+    }
+
+    if (!title.trim()) {
+      errors.title = 'Title is required.';
+    }
+
+    if (!body.trim()) {
+      errors.body = 'Body is required.';
+    }
 
     if (!['high', 'medium', 'low'].includes(priority)) {
-      errors.priority = 'Priority is required.';
+      errors.priority = 'Please select a priority.';
     }
 
     setFormErrors(errors);
 
     return Object.keys(errors).length === 0;
   };
+
+  // =========================================================
   // CREATE NEWS
+  // =========================================================
 
   const handleCreateNews = async (event) => {
     event.preventDefault();
+
     setError('');
     setSuccess('');
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      return;
+    }
 
     try {
       setSaving(true);
 
       const formData = new FormData();
+
       formData.append('title', title.trim());
+
       formData.append('excerpt', excerpt.trim());
+
       formData.append('body', body.trim());
-      formData.append('category_id', Number(categoryId));
-      formData.append('is_published', isPublished);
-      formData.append('is_featured', isFeatured);
+
+      formData.append('category_id', String(Number(categoryId)));
+
+      formData.append('is_published', isPublished ? '1' : '0');
+
+      formData.append('is_featured', isFeatured ? '1' : '0');
 
       formData.append('priority', priority);
 
-      if (caption.trim()) formData.append('caption', caption.trim());
-      if (author.trim()) formData.append('author', author.trim());
+      formData.append('caption', caption.trim());
+
+      formData.append('author', author.trim());
 
       images.forEach((file) => {
         formData.append('images[]', file, file.name);
@@ -300,12 +401,15 @@ function AdminNews() {
         formData.append('featured_image', featuredImage, featuredImage.name);
       }
 
-      // debug: shows what is actually being sent
+      console.log('Creating news with FormData:');
+
       for (const [key, value] of formData.entries()) {
         console.log(key, value instanceof File ? `File(${value.name})` : value);
       }
 
       const response = await api.post('/admin/posts', formData);
+
+      console.log('Create news response:', response.data);
 
       if (!response.data?.success) {
         setError(response.data?.message || 'Unable to create news.');
@@ -313,19 +417,25 @@ function AdminNews() {
       }
 
       setSuccess(response.data.message || 'News created successfully.');
+
       setShowModal(false);
       setEditingNews(null);
+
       resetForm();
+
       await fetchNews();
     } catch (error) {
       console.error('Create news error:', error);
+
       setError(getBackendError(error));
     } finally {
       setSaving(false);
     }
   };
 
+  // =========================================================
   // UPDATE NEWS
+  // =========================================================
 
   const handleUpdateNews = async (event) => {
     event.preventDefault();
@@ -348,25 +458,35 @@ function AdminNews() {
       const formData = new FormData();
 
       formData.append('title', title.trim());
+
       formData.append('excerpt', excerpt.trim());
+
       formData.append('body', body.trim());
-      formData.append('category_id', Number(categoryId));
-      formData.append('is_published', isPublished);
-      formData.append('is_featured', isFeatured);
+
+      formData.append('category_id', String(Number(categoryId)));
+
+      formData.append('is_published', isPublished ? '1' : '0');
+
+      formData.append('is_featured', isFeatured ? '1' : '0');
 
       formData.append('priority', priority);
 
       formData.append('caption', caption.trim());
+
       formData.append('author', author.trim());
 
-      // Send multiple images
       images.forEach((file) => {
-        formData.append('images[]', file);
+        formData.append('images[]', file, file.name);
       });
 
-      // Send featured image
-      if (featuredImage) {
-        formData.append('featured_image', featuredImage);
+      if (featuredImage instanceof File) {
+        formData.append('featured_image', featuredImage, featuredImage.name);
+      }
+
+      console.log('Updating news with FormData:');
+
+      for (const [key, value] of formData.entries()) {
+        console.log(key, value instanceof File ? `File(${value.name})` : value);
       }
 
       const response = await api.put(`/admin/posts/${editingNews.id}`, formData);
@@ -375,7 +495,6 @@ function AdminNews() {
 
       if (!response.data?.success) {
         setError(response.data?.message || 'Unable to update news.');
-
         return;
       }
 
@@ -386,7 +505,6 @@ function AdminNews() {
 
       resetForm();
 
-      // Fetch fresh backend data.
       await fetchNews();
     } catch (error) {
       console.error('Update news error:', error);
@@ -397,7 +515,9 @@ function AdminNews() {
     }
   };
 
-  //publish the news//
+  // =========================================================
+  // PUBLISH NEWS
+  // =========================================================
 
   const handlePublishNews = async (postId) => {
     try {
@@ -414,12 +534,9 @@ function AdminNews() {
 
       if (!response.data?.success) {
         setError(response.data?.message || 'Unable to publish news.');
-
         return;
       }
 
-      // Update only the published post in React state.
-      // No page refresh and no fetchNews() call.
       setNews((currentNews) =>
         currentNews.map((article) =>
           article.id === postId
@@ -442,7 +559,9 @@ function AdminNews() {
     }
   };
 
+  // =========================================================
   // DELETE NEWS
+  // =========================================================
 
   const handleDeleteNews = async (article) => {
     if (!article?.id) {
@@ -460,6 +579,7 @@ function AdminNews() {
 
     try {
       setDeletingId(article.id);
+
       setError('');
       setSuccess('');
 
@@ -471,11 +591,9 @@ function AdminNews() {
 
       if (!response.data?.success) {
         setError(response.data?.message || 'Unable to delete news.');
-
         return;
       }
 
-      // Immediately remove from UI.
       setNews((currentNews) => currentNews.filter((item) => item.id !== article.id));
 
       setSuccess(response.data.message || 'News deleted successfully.');
@@ -488,38 +606,26 @@ function AdminNews() {
     }
   };
 
-  // BACKEND ERROR HELPER
-
-  const getBackendError = (error) => {
-    const backendErrors = error.response?.data?.errors;
-
-    if (backendErrors) {
-      const firstError = Object.values(backendErrors)?.[0]?.[0];
-
-      if (firstError) {
-        return firstError;
-      }
-    }
-
-    return error.response?.data?.message || 'Something went wrong. Please try again.';
-  };
-
+  // =========================================================
   // MULTIPLE IMAGE FILE SELECT
+  // =========================================================
 
-  const handleImagesChange = (e) => {
-    const selectedFiles = Array.from(e.target.files || []);
+  const handleImagesChange = (event) => {
+    const selectedFiles = Array.from(event.target.files || []);
 
     if (images.length + selectedFiles.length > 3) {
       setError('You can upload a maximum of 3 images.');
-      e.target.value = '';
+
+      event.target.value = '';
+
       return;
     }
 
-    const validFiles = selectedFiles.filter((file) => {
-      const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
-      return validTypes.includes(file.type) && file.size <= 5 * 1024 * 1024;
-    });
+    const validFiles = selectedFiles.filter(
+      (file) => validTypes.includes(file.type) && file.size <= 5 * 1024 * 1024,
+    );
 
     if (validFiles.length !== selectedFiles.length) {
       setError('Only JPG, JPEG, PNG and WEBP images up to 5 MB are allowed.');
@@ -537,34 +643,56 @@ function AdminNews() {
       })),
     ]);
 
-    e.target.value = '';
+    event.target.value = '';
   };
 
+  // =========================================================
   // FEATURED IMAGE SELECT
+  // =========================================================
 
   const handleFeaturedImageChange = (event) => {
     const file = event.target.files?.[0] || null;
 
+    if (!file) {
+      setFeaturedImage(null);
+      setFeaturedPreview('');
+      return;
+    }
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (!validTypes.includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setError('Only JPG, JPEG, PNG and WEBP images up to 5 MB are allowed.');
+
+      event.target.value = '';
+
+      return;
+    }
+
+    setError('');
+
+    if (featuredPreview) {
+      URL.revokeObjectURL(featuredPreview);
+    }
+
     setFeaturedImage(file);
 
-    if (file) {
-      setFeaturedPreview(URL.createObjectURL(file));
-    } else {
-      setFeaturedPreview('');
-    }
+    setFeaturedPreview(URL.createObjectURL(file));
+
+    event.target.value = '';
   };
 
+  // =========================================================
   // OPEN IMAGE GALLERY
+  // =========================================================
 
   const openGallery = (article) => {
     const backendImages = [];
 
-    // Featured image first.
     if (article.featured_image) {
       backendImages.push(article.featured_image);
     }
 
-    // Add all multiple images.
     if (Array.isArray(article.images)) {
       article.images.forEach((image) => {
         if (image && !backendImages.includes(image)) {
@@ -578,12 +706,16 @@ function AdminNews() {
     }
 
     setGalleryImages(backendImages);
+
     setGalleryTitle(article.title || 'News Images');
+
     setGalleryIndex(0);
     setShowGallery(true);
   };
 
+  // =========================================================
   // CLOSE GALLERY
+  // =========================================================
 
   const closeGallery = () => {
     setShowGallery(false);
@@ -592,7 +724,9 @@ function AdminNews() {
     setGalleryIndex(0);
   };
 
+  // =========================================================
   // NEXT IMAGE
+  // =========================================================
 
   const nextGalleryImage = () => {
     if (!galleryImages.length) {
@@ -602,7 +736,9 @@ function AdminNews() {
     setGalleryIndex((currentIndex) => (currentIndex + 1) % galleryImages.length);
   };
 
+  // =========================================================
   // PREVIOUS IMAGE
+  // =========================================================
 
   const previousGalleryImage = () => {
     if (!galleryImages.length) {
@@ -614,7 +750,9 @@ function AdminNews() {
     );
   };
 
+  // =========================================================
   // SEARCH
+  // =========================================================
 
   const filteredNews = news.filter((article) => {
     const searchText = search.toLowerCase().trim();
@@ -640,15 +778,15 @@ function AdminNews() {
     );
   });
 
+  // =========================================================
   // CATEGORY NAME
+  // =========================================================
 
   const getCategoryName = (article) => {
-    // Backend relationship is the first source.
     if (article.category?.name) {
       return article.category.name;
     }
 
-    // Fallback to backend-loaded categories.
     const category = categories.find(
       (item) => Number(item.id) === Number(article.category_id),
     );
@@ -656,7 +794,9 @@ function AdminNews() {
     return category?.name || 'No Category';
   };
 
+  // =========================================================
   // DATE
+  // =========================================================
 
   const formatDate = (date) => {
     if (!date) {
@@ -672,7 +812,9 @@ function AdminNews() {
     return parsedDate.toLocaleDateString();
   };
 
+  // =========================================================
   // GET ALL BACKEND IMAGES
+  // =========================================================
 
   const getArticleImages = (article) => {
     const result = [];
@@ -692,16 +834,16 @@ function AdminNews() {
     return result;
   };
 
+  // =========================================================
   // RENDER
+  // =========================================================
 
   return (
     <div className="min-h-screen bg-slate-50">
       <AdminSidebar />
 
       <main className="ml-64 min-h-screen">
-        {/*
-            HEADER
-         */}
+        {/* HEADER */}
 
         <div className="border-b border-slate-200 bg-white">
           <div className="flex items-center justify-between px-8 py-6">
@@ -729,9 +871,7 @@ function AdminNews() {
           </div>
         </div>
 
-        {/*
-            CONTENT
-         */}
+        {/* CONTENT */}
 
         <div className="p-8">
           {/* SUCCESS */}
@@ -764,9 +904,7 @@ function AdminNews() {
             </div>
           )}
 
-          {/*
-              SEARCH / REFRESH
-           */}
+          {/* SEARCH / REFRESH */}
 
           <div className="mb-6 flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-md">
@@ -791,9 +929,7 @@ function AdminNews() {
             </button>
           </div>
 
-          {/* ===================================================
-              TABLE
-          =================================================== */}
+          {/* TABLE */}
 
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             {loading ? (
@@ -866,11 +1002,14 @@ function AdminNews() {
                     {filteredNews.map((article) => {
                       const articleImages = getArticleImages(article);
 
+                      const published = isTrue(article.is_published);
+
                       return (
                         <tr
                           key={article.id}
                           className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                           {/* NEWS */}
+
                           <td className="px-6 py-5">
                             <div className="flex items-center gap-4">
                               <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
@@ -902,7 +1041,9 @@ function AdminNews() {
                               </div>
                             </div>
                           </td>
-                          {/* MULTIPLE IMAGES */}
+
+                          {/* IMAGES */}
+
                           <td className="px-6 py-5">
                             {articleImages.length > 0 ? (
                               <button
@@ -930,35 +1071,49 @@ function AdminNews() {
                               <span className="text-xs text-slate-400">No images</span>
                             )}
                           </td>
+
                           {/* CATEGORY */}
+
                           <td className="px-6 py-5">
                             <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                               {getCategoryName(article)}
                             </span>
                           </td>
+
                           {/* AUTHOR */}
+
                           <td className="px-6 py-5 text-sm text-slate-600">
                             {article.author || article.added_by || 'Admin'}
                           </td>
+
                           {/* PRIORITY */}
+
                           <td className="px-6 py-5">
-                            <span
-                              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                                normalizePriority(article.priority) === 'high'
-                                  ? 'bg-red-50 text-red-700'
-                                  : normalizePriority(article.priority) === 'low'
-                                    ? 'bg-yellow-50 text-yellow-700'
-                                    : 'bg-blue-50 text-blue-700'
-                              }`}>
-                              {normalizePriority(article.priority).charAt(0).toUpperCase() +
-                                normalizePriority(article.priority).slice(1)}
-                            </span>
+                            {(() => {
+                              const articlePriority = normalizePriority(article.priority);
+
+                              const priorityClasses = {
+                                high: 'bg-red-50 text-red-700',
+                                medium: 'bg-yellow-50 text-yellow-700',
+                                low: 'bg-slate-100 text-slate-600',
+                              };
+
+                              return (
+                                <span
+                                  className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${
+                                    priorityClasses[articlePriority]
+                                  }`}>
+                                  {articlePriority}
+                                </span>
+                              );
+                            })()}
                           </td>
 
                           {/* STATUS */}
+
                           <td className="px-6 py-5">
                             <div className="flex items-center gap-2">
-                              {article.is_published ? (
+                              {published ? (
                                 <span className="inline-flex rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
                                   Published
                                 </span>
@@ -971,22 +1126,24 @@ function AdminNews() {
                                   <button
                                     type="button"
                                     onClick={() => handlePublishNews(article.id)}
-                                    className="rounded-lg bg-blue-400 px-2 py-2 text-white hover:bg-green-700 disabled:opacity-50">
+                                    className="rounded-lg bg-blue-500 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-600 disabled:opacity-50">
                                     Publish
                                   </button>
                                 </>
                               )}
                             </div>
                           </td>
+
                           {/* DATE */}
+
                           <td className="px-6 py-5 text-sm text-slate-500">
                             {formatDate(article.created_at)}
                           </td>
+
                           {/* ACTIONS */}
+
                           <td className="px-6 py-5">
                             <div className="flex justify-end gap-2">
-                              {/* EDIT */}
-
                               <button
                                 type="button"
                                 onClick={() => openEditModal(article)}
@@ -995,8 +1152,6 @@ function AdminNews() {
                                 title="Edit news">
                                 <Pencil className="h-4 w-4" />
                               </button>
-
-                              {/* DELETE */}
 
                               <button
                                 type="button"
@@ -1032,14 +1187,13 @@ function AdminNews() {
         </div>
       </main>
 
-      {/*
-
+      {/* =====================================================
           CREATE / EDIT MODAL
-       */}
+      ===================================================== */}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl scrollbar-hidden bg-white shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto scrollbar-hidden rounded-2xl bg-white shadow-2xl">
             {/* MODAL HEADER */}
 
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-5">
@@ -1063,10 +1217,12 @@ function AdminNews() {
             </div>
 
             {/* FORM */}
+
             <form
               onSubmit={editingNews ? handleUpdateNews : handleCreateNews}
               className="space-y-6 p-6">
               {/* CATEGORY */}
+
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Category <span className="text-red-500">*</span>
@@ -1076,7 +1232,11 @@ function AdminNews() {
                   value={categoryId}
                   onChange={(event) => {
                     setCategoryId(event.target.value);
-                    setFormErrors((prev) => ({ ...prev, categoryId: '' }));
+
+                    setFormErrors((prev) => ({
+                      ...prev,
+                      categoryId: '',
+                    }));
                   }}
                   disabled={categoriesLoading || saving}
                   className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50">
@@ -1101,6 +1261,7 @@ function AdminNews() {
               </div>
 
               {/* TITLE */}
+
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Title <span className="text-red-500">*</span>
@@ -1111,7 +1272,11 @@ function AdminNews() {
                   value={title}
                   onChange={(event) => {
                     setTitle(event.target.value);
-                    setFormErrors((prev) => ({ ...prev, title: '' }));
+
+                    setFormErrors((prev) => ({
+                      ...prev,
+                      title: '',
+                    }));
                   }}
                   placeholder="Enter news title"
                   disabled={saving}
@@ -1122,7 +1287,9 @@ function AdminNews() {
                   <p className="mt-1 text-xs text-red-600">{formErrors.title}</p>
                 )}
               </div>
+
               {/* EXCERPT */}
+
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Short Description (Excerpt)
@@ -1145,6 +1312,7 @@ function AdminNews() {
               </div>
 
               {/* BODY */}
+
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Body <span className="text-red-500">*</span>
@@ -1154,7 +1322,11 @@ function AdminNews() {
                   value={body}
                   onChange={(event) => {
                     setBody(event.target.value);
-                    setFormErrors((prev) => ({ ...prev, body: '' }));
+
+                    setFormErrors((prev) => ({
+                      ...prev,
+                      body: '',
+                    }));
                   }}
                   placeholder="Write the full news article..."
                   rows={8}
@@ -1168,6 +1340,7 @@ function AdminNews() {
               </div>
 
               {/* CAPTION */}
+
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Caption
@@ -1184,6 +1357,7 @@ function AdminNews() {
               </div>
 
               {/* AUTHOR */}
+
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Author Name
@@ -1200,6 +1374,7 @@ function AdminNews() {
               </div>
 
               {/* PRIORITY */}
+
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Priority <span className="text-red-500">*</span>
@@ -1209,22 +1384,35 @@ function AdminNews() {
                   value={priority}
                   onChange={(event) => {
                     setPriority(event.target.value);
-                    setFormErrors((prev) => ({ ...prev, priority: '' }));
+
+                    setFormErrors((prev) => ({
+                      ...prev,
+                      priority: '',
+                    }));
                   }}
                   disabled={saving}
                   className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50">
                   <option value="high">High</option>
+
                   <option value="medium">Medium</option>
+
                   <option value="low">Low</option>
                 </select>
 
                 {formErrors.priority && (
                   <p className="mt-1 text-xs text-red-600">{formErrors.priority}</p>
                 )}
+
+                <p className="mt-1.5 text-xs text-slate-400">
+                  High priority appears first, followed by medium and low.
+                </p>
               </div>
 
               {/* PUBLISH / FEATURED */}
+
               <div className="grid gap-4 sm:grid-cols-2">
+                {/* IS PUBLISHED */}
+
                 <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/30">
                   <input
                     type="checkbox"
@@ -1244,6 +1432,8 @@ function AdminNews() {
                     </p>
                   </div>
                 </label>
+
+                {/* IS FEATURED */}
 
                 <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/30">
                   <input
@@ -1267,6 +1457,7 @@ function AdminNews() {
               </div>
 
               {/* EXISTING BACKEND IMAGES */}
+
               {editingNews && getArticleImages(editingNews).length > 0 && (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
                   <div className="mb-4">
@@ -1304,6 +1495,7 @@ function AdminNews() {
               )}
 
               {/* MULTIPLE NEW IMAGES */}
+
               <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5">
                 <div className="mb-4 flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white">
@@ -1331,8 +1523,8 @@ function AdminNews() {
                 {imagePreviews.length > 0 && (
                   <div className="mt-5">
                     <p className="mb-3 text-sm font-semibold text-slate-700">
-                      {imagePreviews.length} image{imagePreviews.length !== 1 ? 's' : ''}{' '}
-                      selected
+                      {imagePreviews.length} image
+                      {imagePreviews.length !== 1 ? 's' : ''} selected
                     </p>
 
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -1371,6 +1563,7 @@ function AdminNews() {
               </div>
 
               {/* FEATURED IMAGE */}
+
               <div className="rounded-xl border border-dashed border-blue-200 bg-blue-50/50 p-5">
                 <div className="mb-4 flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white">
@@ -1408,7 +1601,9 @@ function AdminNews() {
                         disabled={saving}
                         onClick={() => {
                           URL.revokeObjectURL(featuredPreview);
+
                           setFeaturedImage(null);
+
                           setFeaturedPreview('');
                         }}
                         className="absolute right-2 top-2 rounded-full bg-red-600 p-1.5 text-white shadow hover:bg-red-700">
@@ -1420,6 +1615,7 @@ function AdminNews() {
               </div>
 
               {/* BUTTONS */}
+
               <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
                 <button
                   type="button"
@@ -1443,9 +1639,9 @@ function AdminNews() {
         </div>
       )}
 
-      {/*
+      {/* =====================================================
           IMAGE GALLERY MODAL
-       */}
+      ===================================================== */}
 
       {showGallery && galleryImages.length > 0 && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">

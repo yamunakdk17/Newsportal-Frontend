@@ -3,7 +3,12 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
-import { getNewsImageUrl, isTrue } from '@/lib/news';
+import {
+  getNewsImageUrl,
+  getNewsList,
+  isPublishedNews,
+  isTrue,
+} from '@/lib/news';
 
 /**
  * Font required: Mukta (700) -> load once in index.html / CSS.
@@ -16,7 +21,7 @@ import { getNewsImageUrl, isTrue } from '@/lib/news';
  *  - onSelect: optional, makes the banner clickable
  *              and returns the selected news item
  */
-export default function HeroBanner({ onSelect }) {
+export default function HeroBanner({ onSelect, newsData, isLoading = false }) {
   const reduce = useReducedMotion();
 
   const [featuredNews, setFeaturedNews] = useState(null);
@@ -26,6 +31,10 @@ export default function HeroBanner({ onSelect }) {
     'min-h-[320px] sm:min-h-[400px] md:min-h-[480px] lg:min-h-[560px] xl:h-[676px]';
 
   useEffect(() => {
+    if (Array.isArray(newsData)) {
+      return;
+    }
+
     const fetchFeaturedNews = async () => {
       try {
         setLoading(true);
@@ -33,13 +42,11 @@ export default function HeroBanner({ onSelect }) {
         const response = await api.get('/news', {
           params: {
             page: 1,
-            per_page: 50,
+            per_page: 8,
           },
         });
 
-        const newsData = Array.isArray(response.data?.data) ? response.data.data : [];
-
-        const publishedNews = newsData.filter((item) => isTrue(item?.is_published));
+        const publishedNews = getNewsList(response).filter(isPublishedNews);
         const featuredNews = publishedNews.find((item) => isTrue(item?.is_featured));
 
         setFeaturedNews(featuredNews || publishedNews[0] || null);
@@ -52,34 +59,43 @@ export default function HeroBanner({ onSelect }) {
     };
 
     fetchFeaturedNews();
-  }, []);
+  }, [newsData]);
 
-  if (loading) {
+  if ((!Array.isArray(newsData) && loading) || isLoading) {
     return <Skeleton className={`w-full rounded-none ${heights}`} />;
   }
 
-  const image = getNewsImageUrl(
-    featuredNews?.featured_image || featuredNews?.images?.[0],
-  );
-  const title = featuredNews?.title || 'Latest News';
-  const category = featuredNews?.category?.name || featuredNews?.category_slug || '';
-  const excerpt = featuredNews?.excerpt || '';
+  const publishedNews = Array.isArray(newsData)
+    ? newsData.filter(isPublishedNews)
+    : [];
+  const selectedNews = Array.isArray(newsData)
+    ? publishedNews.find((item) => isTrue(item?.is_featured)) ||
+      publishedNews[0] ||
+      null
+    : featuredNews;
 
-  const clickable = Boolean(featuredNews?.slug) && typeof onSelect === 'function';
+  const image = getNewsImageUrl(
+    selectedNews?.featured_image || selectedNews?.images?.[0],
+  );
+  const title = selectedNews?.title || 'Latest News';
+  const category = selectedNews?.category?.name || selectedNews?.category_slug || '';
+  const excerpt = selectedNews?.excerpt || '';
+
+  const clickable = Boolean(selectedNews?.slug) && typeof onSelect === 'function';
 
   const interactive = clickable
     ? {
         role: 'link',
         tabIndex: 0,
         onClick: () => {
-          if (featuredNews?.slug) {
-            onSelect(featuredNews);
+          if (selectedNews?.slug) {
+            onSelect(selectedNews);
           }
         },
         onKeyDown: (event) => {
-          if (featuredNews?.slug && (event.key === 'Enter' || event.key === ' ')) {
+          if (selectedNews?.slug && (event.key === 'Enter' || event.key === ' ')) {
             event.preventDefault();
-            onSelect(featuredNews);
+            onSelect(selectedNews);
           }
         },
       }

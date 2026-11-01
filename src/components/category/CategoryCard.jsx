@@ -1,28 +1,38 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-
-/**
- * Fonts: Geist (600) must be loaded in your app (index.html / CSS).
- *
- * Props:
- *  - categories: array of { id, name, slug }
- *  - selectedCategory: 'All' or a category object
- *  - onSelect: (categoryOrAll) => void
- *  - showAll: render the "All" button first (default true)
- */
-
-const toValues = (category) =>
-  [category?.id, category?.name, category?.slug]
-    .filter((value) => value !== null && value !== undefined)
-    .map((value) => String(value).toLowerCase());
+import { useNavigate } from 'react-router-dom';
 
 export default function CategoryBar({
   categories = [],
   selectedCategory = 'All',
-  onSelect,
   showAll = true,
+  onCategorySelect,
 }) {
-  const selectedValues = selectedCategory === 'All' ? [] : toValues(selectedCategory);
+  const navigate = useNavigate();
+
+  /*
+   * First 6 categories are displayed directly
+   * on the Home page.
+   */
+  const visibleCategories = categories.slice(0, 6);
+
+  /*
+   * Remaining categories are available through
+   * the See All button.
+   */
+  const remainingCategories = categories.slice(6);
+
+  const selectedValues =
+    selectedCategory === 'All'
+      ? []
+      : [selectedCategory?.id, selectedCategory?.name, selectedCategory?.slug]
+          .filter((value) => value !== null && value !== undefined)
+          .map((value) => String(value).toLowerCase());
+
+  const toValues = (category) =>
+    [category?.id, category?.name, category?.slug]
+      .filter((value) => value !== null && value !== undefined)
+      .map((value) => String(value).toLowerCase());
 
   const buttonClass = (active) =>
     [
@@ -35,14 +45,47 @@ export default function CategoryBar({
         : 'bg-[#164B99] hover:bg-[#0F3D7F]',
     ].join(' ');
 
-  const handleSelect = (event, value) => {
+  const handleSelect = (event, category) => {
     event.currentTarget.scrollIntoView({
       behavior: 'smooth',
       inline: 'center',
       block: 'nearest',
     });
 
-    onSelect?.(value);
+    /*
+     * SEE ALL
+     */
+    if (category === 'See All') {
+      navigate('/category/all');
+      return;
+    }
+
+    /*
+     * ALL
+     */
+    if (category === 'All') {
+      navigate('/category/all');
+      return;
+    }
+
+    /*
+     * First 6 categories on Home.
+     *
+     * Instead of changing the URL, tell Home
+     * which category was selected.
+     */
+    if (category?.slug) {
+      if (onCategorySelect) {
+        onCategorySelect(category);
+        return;
+      }
+
+      /*
+       * Fallback if CategoryBar is used somewhere
+       * without onCategorySelect.
+       */
+      navigate(`/category/${category.slug}`);
+    }
   };
 
   const list = {
@@ -71,7 +114,6 @@ export default function CategoryBar({
 
   return (
     <nav aria-label="News categories" className="flex w-full flex-col items-center">
-      {/* Category buttons */}
       <div className="w-full bg-[#F9F9FA]">
         <div
           className="
@@ -90,7 +132,7 @@ export default function CategoryBar({
             initial="hidden"
             animate="show"
             className="flex w-max items-center gap-3 sm:gap-4 xl:gap-6">
-            {/* All */}
+            {/* ALL */}
             {showAll && (
               <motion.li variants={pill}>
                 <Button
@@ -103,8 +145,8 @@ export default function CategoryBar({
               </motion.li>
             )}
 
-            {/* Categories */}
-            {categories.map((category) => {
+            {/* FIRST 6 CATEGORIES */}
+            {visibleCategories.map((category) => {
               const isSelected = toValues(category).some((value) =>
                 selectedValues.includes(value),
               );
@@ -121,6 +163,18 @@ export default function CategoryBar({
                 </motion.li>
               );
             })}
+
+            {/* SEE ALL */}
+            {showAll && remainingCategories.length > 0 && (
+              <motion.li variants={pill}>
+                <Button
+                  type="button"
+                  onClick={(event) => handleSelect(event, 'See All')}
+                  className={buttonClass(false)}>
+                  See All
+                </Button>
+              </motion.li>
+            )}
           </motion.ul>
         </div>
       </div>

@@ -113,7 +113,7 @@ export default function Trending({ title = 'चर्चामा', onSelect }) 
         const response = await api.get('/news', {
           params: {
             page: 1,
-            per_page: 50,
+            per_page: 8,
           },
         });
 
