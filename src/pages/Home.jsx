@@ -13,6 +13,9 @@ import Banners from '@/components/Banner/Banners';
 import api from '@/services/api';
 import { getNewsList, isPublishedNews } from '@/lib/news';
 
+import DailyNews from '../components/news/DailyNews';
+import demoNews from '../data/demoNews';
+
 function Home() {
   const navigate = useNavigate();
 
@@ -119,6 +122,20 @@ function Home() {
             onSelect={handleCategorySelect}
           />
         </section>
+
+        <DailyNews
+          title="Daily Updates"
+          news={demoNews}
+          getImageUrl={(item) => item.image}
+          onSelect={(item) => alert(item.title)}
+        />
+        {/*
+        <DailyUpdatesCarousel
+          news={filteredNews}
+          loading={newsLoading}
+          getImageUrl={getImageUrl}
+          onSelect={(item) => navigate(`/news/${item.slug}`)}
+        /> */}
 
         {/* =========================
             MAIN NEWS SECTION
