@@ -1,45 +1,36 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCoverflow, Autoplay } from 'swiper/modules';
+import { useNavigate } from 'react-router-dom';
 
 import 'swiper/css';
 import 'swiper/css/effect-coverflow';
-
-// import { Skeleton } from '@/components/ui/skeleton';
-
-/**
- * Coverflow image carousel (Swiper) styled only with Tailwind.
- * No ImageCarousel.css and no `body { margin: 0 }` needed (Tailwind preflight does that).
- *
- * Props:
- *  - title:       section heading (default "Daily Updates")
- *  - news:        array of stories
- *  - loading:     show a skeleton
- *  - getImageUrl: (item) => image url
- *  - onSelect:    (item) => void   (clicking the centre slide opens the story;
- *                                   clicking a side slide moves it to the centre)
- */
-
-const MIN_SLIDES = 8; // loop mode needs enough slides, so short lists are repeated
 
 export default function DailyUpdatesCarousel({
   title = 'Daily Updates',
   news = [],
   loading = false,
   getImageUrl,
-  onSelect,
 }) {
   const reduce = useReducedMotion();
+  const navigate = useNavigate();
 
-  const slides =
-    news.length === 0 || news.length >= MIN_SLIDES
-      ? news
-      : Array.from(
-          { length: Math.ceil(MIN_SLIDES / news.length) * news.length },
-          (_, i) => news[i % news.length],
-        );
+  // Do not repeat news items
+  const slides = news;
 
   if (!loading && news.length === 0) return null;
+
+  const handleNewsClick = (item, isActive) => {
+    // Only the centre image opens NewsDetails
+    if (!isActive) return;
+
+    if (!item?.slug) {
+      console.error('News slug is missing:', item);
+      return;
+    }
+
+    navigate(`/news/${item.slug}`);
+  };
 
   return (
     <motion.section
@@ -61,17 +52,21 @@ export default function DailyUpdatesCarousel({
         <Swiper
           modules={[EffectCoverflow, Autoplay]}
           effect="coverflow"
-          grabCursor
           centeredSlides
           slidesPerView="auto"
-          spaceBetween={-140}
-          breakpoints={{ 768: { spaceBetween: -130 } }}
-          loop
+          spaceBetween={-100}
+          loop={slides.length > 2}
           slideToClickedSlide
+          allowTouchMove
+          grabCursor
           autoplay={
             reduce
               ? false
-              : { delay: 3000, disableOnInteraction: false, pauseOnMouseEnter: true }
+              : {
+                  delay: 3000,
+                  disableOnInteraction: false,
+                  pauseOnMouseEnter: true,
+                }
           }
           coverflowEffect={{
             rotate: 0,
@@ -81,26 +76,32 @@ export default function DailyUpdatesCarousel({
             slideShadows: true,
           }}
           className="w-full !pb-8 !pt-2.5">
-          {slides.map((item, index) => (
-            <SwiperSlide
-              key={`${item.id}-${index}`}
-              className="!h-[300px] !w-[180px] brightness-[.65] transition-all duration-500 [&.swiper-slide-active]:brightness-100 sm:!h-[380px] sm:!w-[230px] md:!h-[450px] md:!w-[280px]">
-              {({ isActive }) => {
-                const src = getImageUrl(item);
+          {slides.map((item, index) => {
+            const imageUrl = getImageUrl ? getImageUrl(item) : item.featured_image;
 
-                return (
+            return (
+              <SwiperSlide
+                key={item.id || item.slug || index}
+                className="!h-[300px] !w-[180px] brightness-[.65] transition-all duration-500 [&.swiper-slide-active]:brightness-100 sm:!h-[380px] sm:!w-[230px] md:!h-[450px] md:!w-[280px]">
+                {({ isActive }) => (
                   <button
                     type="button"
-                    aria-label={item.title}
+                    aria-label={`Read ${item.title}`}
                     title={item.title}
-                    onClick={() => isActive && onSelect?.(item)}
-                    className="block h-full w-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#164B99]">
-                    {src ? (
+                    onClick={() => handleNewsClick(item, isActive)}
+                    className={`block h-full w-full outline-none focus-visible:ring-2 focus-visible:ring-[#164B99] ${
+                      isActive ? 'cursor-pointer' : 'cursor-grab'
+                    }`}>
+                    {imageUrl ? (
                       <img
-                        src={src}
-                        alt=""
+                        src={imageUrl}
+                        alt={item.title || 'News image'}
                         loading="lazy"
+                        decoding="async"
                         className="block h-full w-full rounded-[2px] object-cover"
+                        onError={(e) => {
+                          console.error('Failed to load image:', imageUrl);
+                        }}
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-neutral-300 text-sm text-neutral-500">
@@ -108,10 +109,10 @@ export default function DailyUpdatesCarousel({
                       </div>
                     )}
                   </button>
-                );
-              }}
-            </SwiperSlide>
-          ))}
+                )}
+              </SwiperSlide>
+            );
+          })}
         </Swiper>
       )}
     </motion.section>

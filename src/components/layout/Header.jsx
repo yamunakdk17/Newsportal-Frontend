@@ -142,7 +142,7 @@ export default function Header({ location = 'Mahottari', logoText = 'मनर�
         initial={reduce ? false : { opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="flex min-h-10 w-full items-center justify-between gap-3 bg-[#0C336B] px-4 py-1.5 font-['Mukta',sans-serif] font-bold tracking-[0.002em] text-[#F0F3FE] sm:gap-6 sm:py-2 md:gap-10 xl:py-2">
+        className="flex h-[40px] w-full items-center justify-between bg-[#0C336B] px-4 py-2 font-['Mukta',sans-serif] font-bold tracking-[0.002em] text-[#F0F3FE]">
         <p className="text-xs leading-4 sm:text-sm sm:leading-6 xl:text-base">
           {nepaliDate}
         </p>
@@ -159,12 +159,12 @@ export default function Header({ location = 'Mahottari', logoText = 'मनर�
       </motion.div>
 
       {/* Logo bar */}
-      <div className="flex w-full items-center justify-center gap-2.5 bg-[#164B99] p-3 sm:p-3">
+      <div className="flex h-[72px] w-full items-center justify-center gap-[10px] bg-[#164B99] px-4 py-4">
         <motion.h1
           initial={reduce ? false : { opacity: 0, y: 12, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
-          className="text-center font-['Hind',sans-serif] text-[40px] font-bold leading-[1.1] tracking-[0.002em] text-[#F0F3FE] sm:text-5xl md:text-6xl lg:text-7xl xl:text-[60px] xl:leading-[72px]">
+          className="flex h-[87px] w-[522px] items-end justify-center text-center font-['Hind',sans-serif] text-[32px] font-bold leading-[86.4px] tracking-[0.2%] text-[#F0F3FE]">
           <Link
             to="/"
             className="outline-none focus-visible:ring-2 focus-visible:ring-[#F0F3FE] focus-visible:ring-offset-2 focus-visible:ring-offset-[#164B99]">

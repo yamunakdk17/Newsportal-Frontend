@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
@@ -11,6 +12,7 @@ import api from '@/services/api';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import Trending from '@/components/news/TrendingNews';
 
 import {
   Pagination,
@@ -21,6 +23,11 @@ import {
 } from '@/components/ui/pagination';
 
 const PER_PAGE = 6;
+
+// Cache each category/page response for 60 seconds.
+const categoryNewsCache = new Map();
+const CATEGORY_CACHE_TTL = 60 * 1000;
+// const { categoryId } = useParams();
 
 /* =========================================================
    IMAGE URL
@@ -35,48 +42,31 @@ const getImageUrl = (item) => {
 
   const imageUrl = String(imagePath).trim();
 
-  /*
-   * Already a complete URL
-   */
-  if (imageUrl.startsWith('https://') || imageUrl.startsWith('http://')) {
-    /*
-     * Backend may return localhost.
-     * Replace it with Cloudflare.
-     */
-    if (
-      imageUrl.startsWith('http://localhost:8000') ||
-      imageUrl.startsWith('https://localhost:8000')
-    ) {
-      return imageUrl.replace(
-        /^https?:\/\/localhost:8000/,
-        'https://cables-babies-eliminate-dozens.trycloudflare.com',
-      );
-    }
-
-    return imageUrl;
-  }
-
-  /*
-   * Cloudflare API URL
-   */
+  // Get backend origin from VITE_API_URL
   const apiUrl =
     import.meta.env.VITE_API_URL ||
     'https://cables-babies-eliminate-dozens.trycloudflare.com/api';
 
   const backendUrl = apiUrl.replace(/\/api\/?$/, '');
 
-  /*
-   * Example:
-   * /storage/news/image.jpg
-   */
+  // Replace localhost image URLs with current backend URL
+  if (
+    imageUrl.startsWith('http://localhost:8000') ||
+    imageUrl.startsWith('https://localhost:8000')
+  ) {
+    return imageUrl.replace(/^https?:\/\/localhost:8000/, backendUrl);
+  }
+
+  // Already a complete URL
+  if (imageUrl.startsWith('https://') || imageUrl.startsWith('http://')) {
+    return imageUrl;
+  }
+
+  // Relative image path
   if (imageUrl.startsWith('/')) {
     return `${backendUrl}${imageUrl}`;
   }
 
-  /*
-   * Example:
-   * storage/news/image.jpg
-   */
   return `${backendUrl}/${imageUrl}`;
 };
 
@@ -94,7 +84,7 @@ const formatDate = (value) =>
     : '';
 
 /* =========================================================
-   PAGINATION
+   PAGINATION HELPERS
 ========================================================= */
 
 const toNepaliNumber = (n) => Number(n).toLocaleString('ne-NP');
@@ -138,7 +128,11 @@ function getPageItems(current, total) {
 function StoryRow({ story, index, variants, onSelect }) {
   const src = getImageUrl(story);
 
-  const date = formatDate(story.published_at);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const date = formatDate(story.published_at || story.created_at);
+
+  const description = story.excerpt || story.caption;
 
   return (
     <motion.article
@@ -153,26 +147,25 @@ function StoryRow({ story, index, variants, onSelect }) {
           onSelect(story);
         }
       }}
-      className={`group grid cursor-pointer grid-cols-1 items-start gap-4 py-6 outline-none focus-visible:ring-2 focus-visible:ring-[#16181A] focus-visible:ring-offset-2 sm:gap-6 sm:py-8 md:grid-cols-[504fr_989fr] xl:py-10 ${
+      className={`group grid cursor-pointer grid-cols-1 items-start gap-3 py-4 outline-none focus-visible:ring-2 focus-visible:ring-[#16181A] focus-visible:ring-offset-2 sm:gap-4 sm:py-5 md:grid-cols-[40fr_60fr] lg:gap-5 lg:py-5 xl:py-6 ${
         index > 0 ? 'border-t border-[#DDE0E3]' : ''
       }`}>
       {/* IMAGE */}
 
-      <AspectRatio ratio={504 / 400} className="w-full overflow-hidden bg-neutral-200">
-        {src ? (
+      <AspectRatio
+        ratio={504 / 300}
+        className="w-full max-w-full overflow-hidden bg-neutral-200">
+        {src && !imageFailed ? (
           <img
             src={src}
             alt={story.title || 'News image'}
             loading="lazy"
-            onError={(event) => {
-              console.error('Category image failed:', src);
-
-              event.currentTarget.style.display = 'none';
-            }}
+            decoding="async"
+            onError={() => setImageFailed(true)}
             className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-neutral-500">
+          <div className="flex h-full w-full items-center justify-center bg-gray-100 text-sm text-neutral-500">
             No image available
           </div>
         )}
@@ -182,15 +175,24 @@ function StoryRow({ story, index, variants, onSelect }) {
 
       <div className="flex min-w-0 flex-col items-start gap-3 font-['Mukta',sans-serif] tracking-[0.002em] sm:gap-4 xl:gap-6">
         <div className="flex w-full flex-col items-start gap-2">
-          <h2 className="line-clamp-3 w-full text-2xl font-bold leading-[1.2] text-[#16181A] transition-colors group-hover:text-[#164B99] sm:text-3xl lg:text-4xl xl:text-5xl 2xl:text-[56px] 2xl:leading-[67px]">
+          {/* NEWS TITLE */}
+
+          <h2
+            className="line-clamp-3 w-full text-xl font-bold leading-[1.3] text-[#16181A]
+            transition-colors group-hover:text-[#164B99] sm:text-2xl md:text-2xl
+            lg:text-2xl xl:text-3xl 2xl:text-4xl">
             {story.title}
           </h2>
+
+          {/* DATE */}
 
           {date && (
             <p className="text-base leading-[1.6] text-[#16181A] sm:text-lg xl:text-2xl xl:leading-[38px]">
               {date}
             </p>
           )}
+
+          {/* AUTHOR */}
 
           {story.author && (
             <p className="text-base leading-[1.6] text-[#16181A] sm:text-lg xl:text-2xl xl:leading-[38px]">
@@ -199,9 +201,11 @@ function StoryRow({ story, index, variants, onSelect }) {
           )}
         </div>
 
-        {story.caption && (
+        {/* NEWS DESCRIPTION */}
+
+        {description && (
           <p className="line-clamp-3 w-full text-sm leading-7 text-[#4A4E54] sm:text-base xl:text-lg xl:leading-[38px]">
-            {story.caption}
+            {description}
           </p>
         )}
       </div>
@@ -299,7 +303,7 @@ function Pager({ page, totalPages, onChange }) {
 ========================================================= */
 
 function Category() {
-  const { slug = 'all' } = useParams();
+  const { categoryId } = useParams();
 
   const navigate = useNavigate();
 
@@ -311,6 +315,8 @@ function Category() {
 
   const [news, setNews] = useState([]);
 
+  const [categoryName, setCategoryName] = useState('');
+
   const [totalPages, setTotalPages] = useState(1);
 
   const [loading, setLoading] = useState(true);
@@ -318,133 +324,95 @@ function Category() {
   const [error, setError] = useState('');
 
   /* =====================================================
-     FETCH NEWS
+     FETCH CATEGORY NEWS
   ===================================================== */
 
   useEffect(() => {
+    if (!categoryId) {
+      setNews([]);
+      setLoading(false);
+      setError('Category not found.');
+      return;
+    }
+
+    const cacheKey = `${categoryId}-${page}`;
+    const cached = categoryNewsCache.get(cacheKey);
+
+    // Reuse a recent response when the user returns to this category/page.
+    if (cached && Date.now() - cached.savedAt < CATEGORY_CACHE_TTL) {
+      setNews(cached.news);
+      setCategoryName(cached.categoryName);
+      setTotalPages(cached.totalPages);
+      setError('');
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
     let active = true;
 
     const fetchNews = async () => {
+      const startedAt = performance.now();
+
       try {
         setLoading(true);
         setError('');
 
-        const params = {
-          page,
-          per_page: PER_PAGE,
+        // One request only: fetch the selected category directly by ID.
+        const response = await api.get(`/category/${categoryId}/news`, {
+          params: {
+            page,
+            per_page: PER_PAGE,
+          },
+          signal: controller.signal,
+        });
+
+        console.log(
+          `Category ${categoryId} API time: ${Math.round(performance.now() - startedAt)}ms`,
+        );
+
+        if (!response.data?.success) {
+          throw new Error(response.data?.message || 'Unable to load category news.');
+        }
+
+        const newsData = Array.isArray(response.data.data) ? response.data.data : [];
+
+        const name = newsData[0]?.category?.name || `Category ${categoryId}`;
+
+        const lastPage = Number(
+          response.data.meta?.last_page || response.data.last_page || 1,
+        );
+
+        const result = {
+          news: newsData,
+          categoryName: name,
+          totalPages: Math.max(1, lastPage),
+          savedAt: Date.now(),
         };
 
-        /*
-         * If a real category is selected,
-         * convert the category slug into its integer ID.
-         */
-        if (slug && slug.toLowerCase() !== 'all') {
-          console.log('CATEGORY SLUG:', slug);
+        if (!active) return;
 
-          // Get all categories
-          const categoryResponse = await api.get('/categories');
+        // Cache only successful responses.
+        categoryNewsCache.set(cacheKey, result);
 
-          console.log('CATEGORIES RESPONSE:', categoryResponse.data);
-
-          const categories = Array.isArray(categoryResponse.data?.data)
-            ? categoryResponse.data.data
-            : [];
-
-          /*
-           * Find category using the slug from the URL.
-           *
-           * Example:
-           * URL: /category/sports
-           * slug: "sports"
-           *
-           * Category:
-           * {
-           *   id: 3,
-           *   name: "Sports",
-           *   slug: "sports"
-           * }
-           */
-          const selectedCategory = categories.find(
-            (category) =>
-              String(category?.slug).toLowerCase() === String(slug).toLowerCase(),
-          );
-
-          console.log('SELECTED CATEGORY:', selectedCategory);
-
-          /*
-           * Category was not found.
-           */
-          if (!selectedCategory) {
-            throw new Error(`Category "${slug}" was not found.`);
-          }
-
-          /*
-           * Backend requires integer category ID.
-           */
-          const categoryId = Number(selectedCategory.id);
-
-          if (!Number.isInteger(categoryId)) {
-            throw new Error('Invalid category ID received from backend.');
-          }
-
-          params.category = categoryId;
-        }
-
-        console.log('CATEGORY API PARAMS:', params);
-
-        /*
-         * Fetch news.
-         */
-        const response = await api.get('/news', {
-          params,
-        });
-
-        console.log('CATEGORY API RESPONSE:', response.data);
-
-        if (response.data?.success === false) {
-          throw new Error(response.data?.message || 'Unable to load news.');
-        }
-
-        const data = response.data?.data;
-
-        const list = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.data)
-            ? data.data
-            : [];
-
-        /*
-         * Keep only published news.
-         */
-        const publishedNews = list.filter((item) => {
-          const value = item?.is_published;
-
-          return value === true || value === 1 || value === '1' || value === 'true';
-        });
-
-        if (!active) {
+        setNews(result.news);
+        setCategoryName(result.categoryName);
+        setTotalPages(result.totalPages);
+      } catch (requestError) {
+        if (
+          requestError.name === 'CanceledError' ||
+          requestError.code === 'ERR_CANCELED' ||
+          controller.signal.aborted
+        ) {
           return;
         }
 
-        setNews(publishedNews);
-
-        /*
-         * Laravel-style pagination.
-         */
-        const lastPage = Number(
-          response.data?.meta?.last_page ?? response.data?.last_page ?? 1,
-        );
-
-        setTotalPages(Math.max(1, lastPage));
-      } catch (requestError) {
         console.error(
           'Unable to load category news:',
           requestError.response?.data || requestError,
         );
 
-        if (!active) {
-          return;
-        }
+        if (!active) return;
 
         setError(
           requestError.response?.data?.message ||
@@ -454,7 +422,7 @@ function Category() {
 
         setNews([]);
       } finally {
-        if (active) {
+        if (active && !controller.signal.aborted) {
           setLoading(false);
         }
       }
@@ -464,8 +432,11 @@ function Category() {
 
     return () => {
       active = false;
+
+      // Cancel the previous category/page request when the user navigates.
+      controller.abort();
     };
-  }, [slug, page]);
+  }, [categoryId, page]);
 
   /* =====================================================
      CHANGE PAGE
@@ -491,12 +462,6 @@ function Category() {
       behavior: 'smooth',
     });
   };
-
-  /* =====================================================
-     CATEGORY NAME
-  ===================================================== */
-
-  const categoryName = news[0]?.category?.name || (slug === 'all' ? 'All News' : slug);
 
   /* =====================================================
      ANIMATION
@@ -536,7 +501,7 @@ function Category() {
       <Header />
 
       <main className="mx-auto flex w-full max-w-[1920px] flex-col items-start gap-6 px-4 pb-10 sm:gap-10 sm:px-6 md:px-10 lg:px-16 xl:gap-20 xl:px-[120px] xl:pb-20">
-        {/* CATEGORY BADGE */}
+        {/* CATEGORY HEADING */}
 
         <motion.div
           initial={
@@ -556,12 +521,12 @@ function Category() {
             ease: 'easeOut',
           }}
           className="flex items-center gap-4 bg-[linear-gradient(90deg,rgba(33,104,205,0.2)_2.48%,rgba(17,52,103,0.2)_100%),#2168CD] px-3 py-1.5 sm:px-4 sm:py-2">
-          <h1 className="font-['Mukta',sans-serif] text-xl font-bold leading-[1.2] tracking-[0.002em] text-[#F0F3FE] sm:text-2xl xl:text-[32px] xl:leading-[38px]">
-            {categoryName}
+          <h1 className="font-['Mukta',sans-serif] text-xl font-bold leading-[1.2] tracking-[0.002em] text-[#324dac] sm:text-2xl xl:text-[32px] xl:leading-[38px]">
+            {categoryName || 'Loading category...'}
           </h1>
         </motion.div>
 
-        <div className="flex w-full flex-col gap-6 xl:gap-6">
+        <div className="flex w-full flex-col gap-20">
           {/* LOADING */}
 
           {loading &&
@@ -598,7 +563,7 @@ function Category() {
 
           {!loading && !error && news.length === 0 && (
             <p className="py-16 text-center font-['Mukta',sans-serif] text-lg text-gray-500">
-              No news available.
+              No news available in this category.
             </p>
           )}
 
@@ -606,7 +571,7 @@ function Category() {
 
           {!loading && !error && news.length > 0 && (
             <motion.div
-              key={`${slug}-${page}`}
+              key={`${categoryId}-${page}`}
               variants={container}
               initial="hidden"
               animate="show"
@@ -630,6 +595,8 @@ function Category() {
           )}
         </div>
       </main>
+
+      <Trending />
 
       <Footer />
     </>

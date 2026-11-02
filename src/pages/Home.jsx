@@ -154,6 +154,9 @@ function Home() {
             </section>
 
             <section className="my-16">
+              <Banners />
+            </section>
+            <section className="my-16">
               <NewsAnotherSection newsData={news} onSelect={handleHeroSelect} />
             </section>
 

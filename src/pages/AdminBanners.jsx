@@ -15,18 +15,27 @@ import {
 import api from '@/services/api';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 
+// --------------------------------------------------
+// HELPER FUNCTIONS
+// --------------------------------------------------
+
 function getBackendError(error) {
   const response = error?.response?.data;
 
   if (response?.errors) {
     const firstError = Object.values(response.errors).flat()[0];
 
-    if (firstError) {
-      return firstError;
-    }
+    if (firstError) return firstError;
   }
 
   return response?.message || error?.message || 'Something went wrong. Please try again.';
+}
+
+// Replace localhost with LAN IP in backend image URLs
+function getImageUrl(image) {
+  if (!image) return '';
+
+  return image.replace(/^https?:\/\/localhost:8000/i, 'http://192.168.1.118:8000');
 }
 
 function isBannerActive(value) {
@@ -38,12 +47,14 @@ function formatDate(date) {
 
   const parsedDate = new Date(date);
 
-  if (Number.isNaN(parsedDate.getTime())) {
-    return '-';
-  }
+  if (Number.isNaN(parsedDate.getTime())) return '-';
 
   return parsedDate.toLocaleDateString();
 }
+
+// --------------------------------------------------
+// ADMIN BANNERS
+// --------------------------------------------------
 
 function AdminBanners() {
   const [banners, setBanners] = useState([]);
@@ -64,15 +75,11 @@ function AdminBanners() {
   const [previewBanner, setPreviewBanner] = useState(null);
 
   // --------------------------------------------------
-  // FORM
+  // FORM STATES
   // --------------------------------------------------
 
   const [title, setTitle] = useState('');
-
-  // Selected image file
   const [imageFile, setImageFile] = useState(null);
-
-  // Preview URL for selected image
   const [imagePreview, setImagePreview] = useState('');
 
   const [link, setLink] = useState('');
@@ -97,7 +104,6 @@ function AdminBanners() {
       setBanners(Array.isArray(bannerData) ? bannerData : []);
     } catch (error) {
       console.error('Fetch banners error:', error);
-
       setError(getBackendError(error));
     } finally {
       setLoading(false);
@@ -113,6 +119,10 @@ function AdminBanners() {
   // --------------------------------------------------
 
   const resetForm = () => {
+    if (imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
     setTitle('');
     setImageFile(null);
     setImagePreview('');
@@ -145,19 +155,11 @@ function AdminBanners() {
     setEditingBanner(banner);
 
     setTitle(banner.title || '');
-
-    /*
-      For editing:
-      show the currently uploaded image.
-
-      We do NOT put the existing image URL into
-      the file input because browser file inputs
-      cannot be populated programmatically.
-    */
     setImageFile(null);
-    setImagePreview(banner.image || '');
 
-    setLink(banner.link || '');
+    setImagePreview(getImageUrl(banner.image));
+
+    setLink(banner.link_url || banner.link || '');
 
     setSortOrder(
       banner.sort_order !== undefined && banner.sort_order !== null
@@ -192,11 +194,8 @@ function AdminBanners() {
   const handleImageChange = (event) => {
     const file = event.target.files?.[0];
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
-    // Make sure selected file is an image
     if (!file.type.startsWith('image/')) {
       setFormErrors((current) => ({
         ...current,
@@ -204,8 +203,11 @@ function AdminBanners() {
       }));
 
       setImageFile(null);
-
       return;
+    }
+
+    if (imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
     }
 
     setImageFile(file);
@@ -215,7 +217,6 @@ function AdminBanners() {
       image: '',
     }));
 
-    // Create local preview
     const previewUrl = URL.createObjectURL(file);
 
     setImagePreview(previewUrl);
@@ -232,14 +233,6 @@ function AdminBanners() {
       errors.title = 'Title is required.';
     }
 
-    /*
-      CREATE:
-      Image is required.
-
-      EDIT:
-      Existing image can remain if the user
-      doesn't select a new image.
-    */
     if (!editingBanner && !imageFile) {
       errors.image = 'Image is required.';
     }
@@ -256,8 +249,13 @@ function AdminBanners() {
       }
     }
 
-    if (sortOrder === '' || sortOrder === null || Number.isNaN(Number(sortOrder))) {
-      errors.sortOrder = 'Sort order is required.';
+    if (
+      sortOrder === '' ||
+      sortOrder === null ||
+      Number.isNaN(Number(sortOrder)) ||
+      Number(sortOrder) < 1
+    ) {
+      errors.sortOrder = 'Enter a valid sort order.';
     }
 
     setFormErrors(errors);
@@ -275,42 +273,26 @@ function AdminBanners() {
     setError('');
     setSuccess('');
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       setSaving(true);
 
-      /*
-        IMPORTANT:
-        Banner image is a real file.
-
-        Therefore we use FormData instead of JSON.
-      */
       const formData = new FormData();
 
       formData.append('title', title.trim());
 
-      /*
-        Backend expects:
-        image
-
-        and it must be a file.
-      */
       if (imageFile) {
         formData.append('image', imageFile);
       }
 
-      formData.append('link', link.trim());
+      formData.append('link_url', link.trim());
 
       formData.append('sort_order', String(Number(sortOrder)));
 
       formData.append('is_active', isActive ? '1' : '0');
 
       if (editingBanner) {
-        // UPDATE
-
         const response = await api.put(`/admin/banners/${editingBanner.id}`, formData);
 
         if (response.data?.success === false) {
@@ -319,8 +301,6 @@ function AdminBanners() {
 
         setSuccess('Banner updated successfully.');
       } else {
-        // CREATE
-
         const response = await api.post('/admin/banners', formData);
 
         if (response.data?.success === false) {
@@ -331,7 +311,6 @@ function AdminBanners() {
       }
 
       setShowModal(false);
-
       resetForm();
 
       await fetchBanners();
@@ -351,8 +330,8 @@ function AdminBanners() {
           mappedErrors.image = backendErrors.image[0];
         }
 
-        if (backendErrors.link) {
-          mappedErrors.link = backendErrors.link[0];
+        if (backendErrors.link_url) {
+          mappedErrors.link = backendErrors.link_url[0];
         }
 
         if (backendErrors.sort_order) {
@@ -399,7 +378,6 @@ function AdminBanners() {
       setSuccess('Banner deleted successfully.');
     } catch (error) {
       console.error('Delete banner error:', error);
-
       setError(getBackendError(error));
     } finally {
       setDeletingId(null);
@@ -417,21 +395,13 @@ function AdminBanners() {
       setError('');
       setSuccess('');
 
-      /*
-        We can update only is_active.
-      */
       await api.put(`/admin/banners/${banner.id}`, {
         is_active: newStatus,
       });
 
       setBanners((current) =>
         current.map((item) =>
-          item.id === banner.id
-            ? {
-                ...item,
-                is_active: newStatus,
-              }
-            : item,
+          item.id === banner.id ? { ...item, is_active: newStatus } : item,
         ),
       );
 
@@ -440,7 +410,6 @@ function AdminBanners() {
       );
     } catch (error) {
       console.error('Toggle banner error:', error);
-
       setError(getBackendError(error));
     }
   };
@@ -466,15 +435,13 @@ function AdminBanners() {
   const filteredBanners = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    if (!keyword) {
-      return banners;
-    }
+    if (!keyword) return banners;
 
     return banners.filter((banner) => {
       return (
         banner.title?.toLowerCase().includes(keyword) ||
         banner.image?.toLowerCase().includes(keyword) ||
-        banner.link?.toLowerCase().includes(keyword)
+        banner.link_url?.toLowerCase().includes(keyword)
       );
     });
   }, [banners, search]);
@@ -599,33 +566,21 @@ function AdminBanners() {
                 <table className="w-full min-w-[1000px]">
                   <thead className="border-b bg-gray-50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Banner
-                      </th>
-
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Image
-                      </th>
-
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Link
-                      </th>
-
-                      <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Order
-                      </th>
-
-                      <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Status
-                      </th>
-
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Date
-                      </th>
-
-                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Actions
-                      </th>
+                      {[
+                        'Banner',
+                        'Image',
+                        'Link',
+                        'Order',
+                        'Status',
+                        'Date',
+                        'Actions',
+                      ].map((heading) => (
+                        <th
+                          key={heading}
+                          className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {heading}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
 
@@ -638,7 +593,7 @@ function AdminBanners() {
                           <div className="flex items-center gap-4">
                             <div className="h-16 w-28 shrink-0 overflow-hidden rounded-lg bg-gray-100">
                               <img
-                                src={banner.image}
+                                src={getImageUrl(banner.image)}
                                 alt={banner.title}
                                 className="h-full w-full object-cover"
                                 onError={(event) => {
@@ -668,14 +623,14 @@ function AdminBanners() {
                         {/* LINK */}
 
                         <td className="max-w-[180px] px-6 py-4">
-                          {banner.link ? (
+                          {banner.link_url ? (
                             <a
-                              href={banner.link}
+                              href={banner.link_url}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex max-w-full items-center gap-1 text-sm text-blue-600 hover:underline"
-                              title={banner.link}>
-                              <span className="truncate">{banner.link}</span>
+                              title={banner.link_url}>
+                              <span className="truncate">{banner.link_url}</span>
 
                               <ExternalLink size={14} className="shrink-0" />
                             </a>
@@ -759,8 +714,7 @@ function AdminBanners() {
 
           {!loading && (
             <div className="mt-4 text-sm text-gray-500">
-              Showing {filteredBanners.length} of {banners.length} banner
-              {banners.length === 1 ? '' : 's'}
+              Showing {filteredBanners.length} of {banners.length} banners
             </div>
           )}
         </div>
@@ -768,7 +722,7 @@ function AdminBanners() {
 
       {/* ==================================================
           CREATE / EDIT MODAL
-          ================================================== */}
+      ================================================== */}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8">
@@ -866,15 +820,17 @@ function AdminBanners() {
 
                     <div className="flex min-h-[180px] items-center justify-center p-4">
                       <img
-                        src={imagePreview}
+                        src={
+                          imagePreview.startsWith('blob:')
+                            ? imagePreview
+                            : getImageUrl(imagePreview)
+                        }
                         alt="Banner preview"
                         className="max-h-64 max-w-full rounded-lg object-contain"
                       />
                     </div>
                   </div>
                 )}
-
-                {/* EXISTING IMAGE MESSAGE */}
 
                 {editingBanner && !imageFile && imagePreview && (
                   <p className="mt-2 text-xs text-gray-500">
@@ -986,7 +942,7 @@ function AdminBanners() {
 
       {/* ==================================================
           PREVIEW MODAL
-          ================================================== */}
+      ================================================== */}
 
       {showPreview && previewBanner && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4">
@@ -1000,7 +956,7 @@ function AdminBanners() {
 
             <div className="bg-gray-100">
               <img
-                src={previewBanner.image}
+                src={getImageUrl(previewBanner.image)}
                 alt={previewBanner.title}
                 className="max-h-[70vh] w-full object-contain"
               />
@@ -1009,9 +965,9 @@ function AdminBanners() {
             <div className="p-5">
               <h3 className="text-lg font-bold text-gray-900">{previewBanner.title}</h3>
 
-              {previewBanner.link && (
+              {previewBanner.link_url && (
                 <a
-                  href={previewBanner.link}
+                  href={previewBanner.link_url}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 hover:underline">

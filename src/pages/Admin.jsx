@@ -12,11 +12,20 @@ function Admin() {
   const [error, setError] = useState('');
 
   // Logout function
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('tokenType');
+  const handleLogout = async () => {
+    try {
+      // Hit backend logout route
+      const response = await api.post('/admin/logout');
 
-    navigate('/login');
+      console.log('Logout response:', response.data);
+    } catch (error) {
+      console.error('Logout error:', error.response?.data || error.message);
+    } finally {
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('tokenType');
+
+      navigate('/login');
+    }
   };
 
   useEffect(() => {

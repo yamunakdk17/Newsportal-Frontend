@@ -14,7 +14,7 @@ export default function CategoryBar({
    * First 6 categories are displayed directly
    * on the Home page.
    */
-  const visibleCategories = categories.slice(0, 6);
+  const visibleCategories = categories;
 
   /*
    * Remaining categories are available through
@@ -84,7 +84,7 @@ export default function CategoryBar({
        * Fallback if CategoryBar is used somewhere
        * without onCategorySelect.
        */
-      navigate(`/category/${category.slug}`);
+      navigate(`/category/${category.id}`);
     }
   };
 
@@ -163,18 +163,6 @@ export default function CategoryBar({
                 </motion.li>
               );
             })}
-
-            {/* SEE ALL */}
-            {showAll && remainingCategories.length > 0 && (
-              <motion.li variants={pill}>
-                <Button
-                  type="button"
-                  onClick={(event) => handleSelect(event, 'See All')}
-                  className={buttonClass(false)}>
-                  See All
-                </Button>
-              </motion.li>
-            )}
           </motion.ul>
         </div>
       </div>

@@ -16,8 +16,7 @@ export default function AppRoutes() {
       <Route path="/" element={<Home />} />
 
       {/* Category */}
-      <Route path="/category/:slug" element={<Category />} />
-
+      <Route path="/category/:categoryId" element={<Category />} />
       {/* News Details */}
       <Route path="/news/:slug" element={<NewsDetails />} />
 

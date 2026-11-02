@@ -235,7 +235,7 @@ export default function Footer({
             className="flex w-full max-w-md flex-col items-start gap-3 sm:gap-4 lg:max-w-[366px]">
             <Link
               to="/"
-              className="font-['Hind',sans-serif] text-2xl font-bold leading-tight tracking-[0.002em] text-[#F0F3FE] outline-none focus-visible:ring-2 focus-visible:ring-[#DEE5FD] focus-visible:ring-offset-2 focus-visible:ring-offset-[#164B99] sm:text-3xl xl:text-[32px] xl:leading-[86px]">
+              className="font-['Hind',sans-serif] text-2xl font-bold tracking-[0.002em] text-[#F0F3FE] outline-none focus-visible:ring-2 focus-visible:ring-[#DEE5FD] focus-visible:ring-offset-2 focus-visible:ring-offset-[#164B99] sm:text-3xl xl:text-[32px]">
               {logoText}
             </Link>
 

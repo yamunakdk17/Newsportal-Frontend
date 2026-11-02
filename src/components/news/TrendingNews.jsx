@@ -5,7 +5,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
-import { getNewsImageUrl, isTrue } from '@/lib/news';
+import { getNewsImageUrl } from '@/lib/news';
 
 /**
  * Backend:
@@ -14,14 +14,11 @@ import { getNewsImageUrl, isTrue } from '@/lib/news';
  * Priority order:
  * high → medium → low
  *
- * Only published news are shown.
  * First 4 priority-sorted news are displayed.
  */
 
 const formatDate = (value) => {
-  if (!value) {
-    return '';
-  }
+  if (!value) return '';
 
   const date = new Date(value);
 
@@ -61,7 +58,7 @@ function TrendingCard({ story, variants, getImageUrl, onSelect }) {
         {src ? (
           <img
             src={src}
-            alt=""
+            alt={story.title || ''}
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
           />
@@ -74,7 +71,7 @@ function TrendingCard({ story, variants, getImageUrl, onSelect }) {
 
       <div className="flex w-full flex-col items-start gap-3 2xl:gap-4">
         <div className="flex w-full flex-col items-start gap-2">
-          <h3 className="line-clamp-2 w-full font-['Mukta',sans-serif] text-2xl font-bold leading-8 tracking-[0.002em] text-[#16181A] transition-colors group-hover:text-[#164B99] md:text-3xl md:leading-10 lg:text-lg lg:leading-7 xl:text-2xl xl:leading-8 2xl:text-[40px] 2xl:leading-[48px]">
+          <h3 className="line-clamp-2 w-full font-['Mukta',sans-serif] text-xl font-bold leading-[1.5] tracking-[0.002em] text-[#16181A] transition-colors group-hover:text-[#164B99] md:text-2xl lg:text-base xl:text-lg 2xl:text-2xl">
             {story.title}
           </h3>
 
@@ -85,9 +82,9 @@ function TrendingCard({ story, variants, getImageUrl, onSelect }) {
           </div>
         </div>
 
-        {story.caption && (
-          <p className="line-clamp-3 w-full font-['Mukta',sans-serif] text-base leading-6 tracking-[0.002em] text-[#4A4E54] 2xl:text-xl">
-            {story.caption}
+        {(story.excerpt || story.caption) && (
+          <p className="line-clamp-3 w-full font-['Mukta',sans-serif] text-sm leading-6 tracking-[0.002em] text-[#4A4E54] sm:text-base 2xl:text-lg">
+            {story.excerpt || story.caption}
           </p>
         )}
       </div>
@@ -95,7 +92,7 @@ function TrendingCard({ story, variants, getImageUrl, onSelect }) {
   );
 }
 
-export default function Trending({ title = 'चर्चामा', onSelect }) {
+export default function Trending({ title = 'Trending News', onSelect }) {
   const reduce = useReducedMotion();
   const navigate = useNavigate();
 
@@ -120,16 +117,15 @@ export default function Trending({ title = 'चर्चामा', onSelect }) 
         const newsData = Array.isArray(response.data?.data) ? response.data.data : [];
 
         /*
-         * Only published news.
+         * Keep existing news data.
          */
-        const publishedNews = newsData.filter((item) => isTrue(item?.is_published));
+        const publishedNews = newsData;
 
         /*
          * Priority order:
-         *
-         * high   = 1
+         * high = 1
          * medium = 2
-         * low    = 3
+         * low = 3
          */
         const priorityOrder = {
           high: 1,
@@ -137,13 +133,6 @@ export default function Trending({ title = 'चर्चामा', onSelect }) 
           low: 3,
         };
 
-        /*
-         * Sort:
-         *
-         * HIGH
-         * then MEDIUM
-         * then LOW
-         */
         const priorityNews = [...publishedNews].sort((a, b) => {
           const priorityA = priorityOrder[String(a.priority || '').toLowerCase()] ?? 999;
 
@@ -153,12 +142,11 @@ export default function Trending({ title = 'चर्चामा', onSelect }) 
         });
 
         /*
-         * Show only first 4.
+         * Show first 4 priority-sorted news.
          */
         setNews(priorityNews.slice(0, 4));
       } catch (error) {
         console.error('Unable to load trending news:', error);
-
         setNews([]);
       } finally {
         setLoading(false);
@@ -174,10 +162,11 @@ export default function Trending({ title = 'चर्चामा', onSelect }) 
   const getImageUrl = (item) =>
     getNewsImageUrl(item?.featured_image || item?.images?.[0]);
 
+  /*
+   * Navigate to news details.
+   */
   const handleSelect = (story) => {
-    if (!story?.slug) {
-      return;
-    }
+    if (!story?.slug) return;
 
     if (onSelect) {
       onSelect(story);
@@ -187,6 +176,9 @@ export default function Trending({ title = 'चर्चामा', onSelect }) 
     navigate(`/news/${story.slug}`);
   };
 
+  /*
+   * Animations.
+   */
   const container = {
     hidden: {},
     show: {
@@ -201,7 +193,6 @@ export default function Trending({ title = 'चर्चामा', onSelect }) 
       opacity: reduce ? 1 : 0,
       y: reduce ? 0 : 20,
     },
-
     show: {
       opacity: 1,
       y: 0,
@@ -233,9 +224,7 @@ export default function Trending({ title = 'चर्चामा', onSelect }) 
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="flex flex-col gap-4">
               <Skeleton className="aspect-[402/300] w-full rounded-none" />
-
               <Skeleton className="h-8 w-full" />
-
               <Skeleton className="h-6 w-2/3" />
             </div>
           ))}
@@ -252,7 +241,7 @@ export default function Trending({ title = 'चर्चामा', onSelect }) 
           className={`${gridClass} w-full`}>
           {stories.map((story) => (
             <TrendingCard
-              key={story.id}
+              key={story.id || story.slug}
               story={story}
               variants={item}
               getImageUrl={getImageUrl}
