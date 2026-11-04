@@ -36,9 +36,9 @@ export default function CategoryBar({
 
   const buttonClass = (active) =>
     [
-      'h-auto shrink-0 rounded-none px-3 py-1.5 sm:px-4 sm:py-2',
-      "font-['Geist',sans-serif] text-base font-semibold leading-normal tracking-[-0.002em] whitespace-nowrap",
-      'sm:text-lg md:text-xl xl:text-xl xl:leading-[38px]',
+      'h-auto shrink-0 rounded-none px-3 py-1.5 sm:px-3.5 sm:py-2',
+      "font-['Geist',sans-serif] text-sm font-semibold leading-normal tracking-[-0.002em] whitespace-nowrap",
+      'sm:text-base md:text-lg xl:text-lg',
       'text-[#F9F9FA] transition-colors hover:text-[#F9F9FA]',
       active
         ? 'bg-[#0D3573] ring-2 ring-[#164B99] ring-offset-2 hover:bg-[#0D3573]'
@@ -117,21 +117,21 @@ export default function CategoryBar({
       <div className="w-full bg-[#F9F9FA]">
         <div
           className="
-            overflow-x-auto
-            px-4 py-3
-            sm:px-6 sm:py-4
-            md:px-10
-            lg:px-16
-            xl:px-[120px] xl:py-6
-            [scrollbar-width:none]
-            [-ms-overflow-style:none]
-            [&::-webkit-scrollbar]:hidden
-          ">
+  overflow-x-auto
+  px-0 py-3
+  sm:px-2 sm:py-3
+  md:px-4
+  lg:px-6
+  xl:px-8 xl:py-4
+  [scrollbar-width:none]
+  [-ms-overflow-style:none]
+  [&::-webkit-scrollbar]:hidden
+">
           <motion.ul
             variants={list}
             initial="hidden"
             animate="show"
-            className="flex w-max items-center gap-3 sm:gap-4 xl:gap-6">
+            className="flex w-max items-center gap-2 sm:gap-3 xl:gap-4">
             {/* ALL */}
             {showAll && (
               <motion.li variants={pill}>

@@ -3,29 +3,11 @@ import { motion, useReducedMotion } from 'framer-motion';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import api from '@/services/api';
+import { getImageUrl } from '@/lib/getImageUrl';
 
 /*
  * Convert backend image path into a usable URL.
  */
-const API_ORIGIN = new URL(import.meta.env.VITE_API_URL).origin;
-
-const getImageUrl = (image) => {
-  if (!image) return '';
-
-  // Replace localhost backend URL with Cloudflare URL
-  if (image.includes('localhost:8000')) {
-    const imagePath = new URL(image).pathname;
-    return `${API_ORIGIN}${imagePath}`;
-  }
-
-  // Keep other full URLs unchanged
-  if (image.startsWith('http')) {
-    return image;
-  }
-
-  // Handle relative image paths
-  return `${API_ORIGIN}/${image.replace(/^\/+/, '')}`;
-};
 
 export default function AdBanner() {
   const reduce = useReducedMotion();
@@ -110,7 +92,7 @@ export default function AdBanner() {
   return (
     <aside
       aria-label="Advertisement"
-      className="flex w-full flex-col items-start gap-2.5 bg-[#EAEBED] py-3 sm:py-4 xl:py-6">
+      className="relative left-1/2 w-screen -translate-x-1/2 bg-[#EAEBED]">
       {href ? (
         <a
           href={href}

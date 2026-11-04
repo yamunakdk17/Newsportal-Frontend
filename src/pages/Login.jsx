@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 
-
 import {
   Card,
   CardContent,
@@ -12,14 +11,12 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
-
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+
 import api from '@/services/api';
 
-
-// 1. Define validation rules
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email'),
 
@@ -38,36 +35,55 @@ function Login() {
     resolver: zodResolver(loginSchema),
   });
 
-  // 3. Runs when validation is successful
   const onSubmit = async (data) => {
     try {
-      // Send email and password to backend
       const response = await api.post('/admin/login', {
         email: data.email,
         password: data.password,
       });
 
       console.log('Login response:', response.data);
-      // Check backend success
-      if (!response.data.success) {
+
+      if (!response.data?.success) {
         setError('root', {
-          message: response.data.message || 'Login failed',
+          message: response.data?.message || 'Login failed',
         });
 
         return;
       }
 
-      // Get token from backend
-      const token = response.data.data.token;
+      const loginData = response.data?.data;
 
-      // Store token
+      const token = loginData?.token;
+      const tokenType = loginData?.token_type;
+      const user = loginData?.user;
+
+      // Make sure backend returned everything required
+      if (!token || !user) {
+        setError('root', {
+          message: 'Invalid login response from server.',
+        });
+
+        return;
+      }
+
+      // Save authentication token
       localStorage.setItem('adminToken', token);
 
-      // Store token type
-      localStorage.setItem('tokenType', response.data.data.token_type);
+      // Save token type
+      localStorage.setItem('tokenType', tokenType || 'Bearer');
 
-      // Login successful
-      navigate('/admin');
+      // Save logged-in user
+      localStorage.setItem('adminUser', JSON.stringify(user));
+
+      // Save role separately
+      localStorage.setItem('adminRole', user.role || '');
+
+      console.log('Logged-in user:', user);
+      console.log('Logged-in role:', user.role);
+
+      // Go to admin dashboard
+      navigate('/admin/categories');
     } catch (error) {
       console.error('Login error:', error);
 
@@ -90,7 +106,6 @@ function Login() {
 
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Email */}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
 
@@ -106,7 +121,6 @@ function Login() {
               )}
             </div>
 
-            {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
 
@@ -122,10 +136,8 @@ function Login() {
               )}
             </div>
 
-            {/* Backend error */}
             {errors.root && <p className="text-sm text-red-500">{errors.root.message}</p>}
 
-            {/* Submit */}
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? 'Logging in...' : 'Login'}
             </Button>

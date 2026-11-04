@@ -4,11 +4,11 @@ import Home from '@/pages/Home';
 import Category from '@/pages/Category';
 import NewsDetails from '@/pages/NewsDetails';
 import Login from '@/pages/Login';
-import Admin from '@/pages/Admin';
+// import Admin from '@/pages/Admin';
 import AdminNews from '@/pages/AdminNews';
 import AdminCategories from '@/pages/AdminCategories';
 import AdminBanners from '@/pages/AdminBanners';
-
+import AdminTeam from '@/pages/AdminTeam';
 export default function AppRoutes() {
   return (
     <Routes>
@@ -24,7 +24,7 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
 
       {/* Admin */}
-      <Route path="/admin" element={<Admin />} />
+      {/* <Route path="/admin" element={<Admin />} /> */}
 
       {/* Admin News */}
       <Route path="/admin/news" element={<AdminNews />} />
@@ -33,6 +33,8 @@ export default function AppRoutes() {
       <Route path="/admin/categories" element={<AdminCategories />} />
 
       <Route path="/admin/banners" element={<AdminBanners />} />
+
+      <Route path="/admin/team" element={<AdminTeam />} />
     </Routes>
   );
 }

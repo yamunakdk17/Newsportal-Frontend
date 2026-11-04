@@ -30,8 +30,7 @@ const newsData = [
     slug: 'football-championship-final',
     title: 'Football Championship Reaches Final',
     category: 'Sports',
-    description:
-      'The national football championship reaches an exciting final.',
+    description: 'The national football championship reaches an exciting final.',
     image: '/news3.jpg',
     content:
       'The national football championship has reached its final stage. Fans are looking forward to an exciting match between the two strongest teams.',
@@ -45,8 +44,7 @@ const newsData = [
     slug: 'new-technology-in-nepal',
     title: 'New Technology in Nepal',
     category: 'Technology',
-    description:
-      'New technology is changing the way people work.',
+    description: 'New technology is changing the way people work.',
     image: '/news4.jpg',
     content:
       'New technology is creating new opportunities for businesses and communities across Nepal.',
@@ -57,8 +55,7 @@ const newsData = [
     slug: 'artificial-intelligence-growing',
     title: 'Artificial Intelligence Is Growing',
     category: 'Technology',
-    description:
-      'Artificial intelligence is becoming more common in everyday life.',
+    description: 'Artificial intelligence is becoming more common in everyday life.',
     image: '/news5.jpg',
     content:
       'Artificial intelligence is being used in education, business, healthcare and many other areas. New AI tools are helping people complete tasks faster.',
@@ -69,8 +66,7 @@ const newsData = [
     slug: 'new-mobile-apps-launched',
     title: 'New Mobile Apps Launched',
     category: 'Technology',
-    description:
-      'Several new mobile applications are being introduced to users.',
+    description: 'Several new mobile applications are being introduced to users.',
     image: '/news6.jpg',
     content:
       'Developers have launched several new mobile applications designed to make communication, business and everyday activities easier.',
@@ -84,8 +80,7 @@ const newsData = [
     slug: 'business-market-growing',
     title: 'Business Market Growing',
     category: 'Business',
-    description:
-      "Nepal's business market continues to grow.",
+    description: "Nepal's business market continues to grow.",
     image: '/news7.jpg',
     content:
       'The business market is showing positive growth with new companies and investment opportunities emerging across the country.',
@@ -96,8 +91,7 @@ const newsData = [
     slug: 'new-businesses-open-in-kathmandu',
     title: 'New Businesses Open in Kathmandu',
     category: 'Business',
-    description:
-      'New businesses are opening in different parts of Kathmandu.',
+    description: 'New businesses are opening in different parts of Kathmandu.',
     image: '/news8.jpg',
     content:
       'Several new businesses have started operations in Kathmandu, creating employment opportunities and providing new services to customers.',
@@ -123,8 +117,7 @@ const newsData = [
     slug: 'new-nepal-movie-released',
     title: 'New Nepali Movie Released',
     category: 'Movies',
-    description:
-      'A new Nepali movie has been released.',
+    description: 'A new Nepali movie has been released.',
     image: '/movie1.jpg',
     content:
       'A new Nepali movie has been released in cinemas. The movie has attracted attention from audiences across the country.',
@@ -135,8 +128,7 @@ const newsData = [
     slug: 'popular-actor-announces-new-movie',
     title: 'Popular Actor Announces New Movie',
     category: 'Movies',
-    description:
-      'A popular Nepali actor announces a new movie project.',
+    description: 'A popular Nepali actor announces a new movie project.',
     image: '/movie2.jpg',
     content:
       'A popular actor has announced a new movie project. The production team is preparing to begin filming soon.',
@@ -147,8 +139,7 @@ const newsData = [
     slug: 'nepali-film-wins-award',
     title: 'Nepali Film Wins International Award',
     category: 'Movies',
-    description:
-      'A Nepali film receives recognition at an international film festival.',
+    description: 'A Nepali film receives recognition at an international film festival.',
     image: '/movie3.jpg',
     content:
       'A Nepali film has received an international award for its storytelling and production. The achievement has brought attention to Nepali cinema.',
@@ -162,8 +153,7 @@ const newsData = [
     slug: 'government-announces-new-policy',
     title: 'Government Announces New Policy',
     category: 'Politics',
-    description:
-      'The government announces a new policy for citizens.',
+    description: 'The government announces a new policy for citizens.',
     image: '/politics1.jpg',
     content:
       'The government has announced a new policy focused on improving public services and supporting communities across the country.',
@@ -174,8 +164,7 @@ const newsData = [
     slug: 'parliament-discusses-new-bill',
     title: 'Parliament Discusses New Bill',
     category: 'Politics',
-    description:
-      'Parliament discusses a new bill during its latest session.',
+    description: 'Parliament discusses a new bill during its latest session.',
     image: '/politics2.jpg',
     content:
       'Members of parliament discussed a new bill during the latest parliamentary session. Further discussion is expected in the coming days.',
@@ -186,8 +175,7 @@ const newsData = [
     slug: 'local-election-preparations-begin',
     title: 'Local Election Preparations Begin',
     category: 'Politics',
-    description:
-      'Preparations for upcoming local elections have started.',
+    description: 'Preparations for upcoming local elections have started.',
     image: '/politics3.jpg',
     content:
       'Election authorities have started preparations for upcoming local elections and are working on the necessary arrangements.',
@@ -201,8 +189,7 @@ const newsData = [
     slug: 'music-festival-announced',
     title: 'Music Festival Announced',
     category: 'Entertainment',
-    description:
-      'A major music festival has been announced for this year.',
+    description: 'A major music festival has been announced for this year.',
     image: '/entertainment1.jpg',
     content:
       'A major music festival is scheduled to take place this year. Several popular artists are expected to participate.',
@@ -213,8 +200,7 @@ const newsData = [
     slug: 'popular-singer-releases-new-song',
     title: 'Popular Singer Releases New Song',
     category: 'Entertainment',
-    description:
-      'A popular singer releases a new song for fans.',
+    description: 'A popular singer releases a new song for fans.',
     image: '/entertainment2.jpg',
     content:
       'A popular singer has released a new song that is quickly gaining attention from fans and listeners.',
@@ -225,8 +211,7 @@ const newsData = [
     slug: 'celebrity-event-attracts-crowd',
     title: 'Celebrity Event Attracts Large Crowd',
     category: 'Entertainment',
-    description:
-      'A celebrity event attracts a large number of fans.',
+    description: 'A celebrity event attracts a large number of fans.',
     image: '/entertainment3.jpg',
     content:
       'A major celebrity event attracted a large crowd of fans. The event included performances, interviews and entertainment activities.',
@@ -240,8 +225,7 @@ const newsData = [
     slug: 'health-awareness-program',
     title: 'Health Awareness Program Held',
     category: 'Health',
-    description:
-      'A health awareness program is organized for local communities.',
+    description: 'A health awareness program is organized for local communities.',
     image: '/health1.jpg',
     content:
       'A health awareness program was organized to educate people about healthy lifestyles, nutrition and regular health checkups.',
@@ -252,8 +236,7 @@ const newsData = [
     slug: 'doctors-share-health-tips',
     title: 'Doctors Share Important Health Tips',
     category: 'Health',
-    description:
-      'Doctors share useful tips for maintaining a healthy lifestyle.',
+    description: 'Doctors share useful tips for maintaining a healthy lifestyle.',
     image: '/health2.jpg',
     content:
       'Health professionals have shared practical advice about maintaining a balanced lifestyle and taking care of personal health.',
@@ -267,8 +250,7 @@ const newsData = [
     slug: 'schools-prepare-for-new-session',
     title: 'Schools Prepare for New Session',
     category: 'Education',
-    description:
-      'Schools across the country prepare for a new academic session.',
+    description: 'Schools across the country prepare for a new academic session.',
     image: '/education1.jpg',
     content:
       'Schools are preparing classrooms, teachers and learning materials for the beginning of a new academic session.',
@@ -279,8 +261,7 @@ const newsData = [
     slug: 'students-get-new-learning-opportunities',
     title: 'Students Get New Learning Opportunities',
     category: 'Education',
-    description:
-      'Students are getting access to new learning opportunities.',
+    description: 'Students are getting access to new learning opportunities.',
     image: '/education2.jpg',
     content:
       'New educational programs are providing students with additional opportunities to improve their skills and knowledge.',
@@ -297,4 +278,3 @@ export const dashboardData = {
 };
 
 export default newsData;
-;

@@ -2,11 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import api from '@/services/api';
-import {
-  getNewsImageUrl,
-  getNewsList,
-  isPublishedNews,
-} from '@/lib/news';
+import { getNewsImageUrl, getNewsList, isPublishedNews } from '@/lib/news';
 
 function NewsSection({ selectedCategory, newsData }) {
   const navigate = useNavigate();
@@ -32,7 +28,7 @@ function NewsSection({ selectedCategory, newsData }) {
           },
         });
 
-        setNews(getNewsList(response));
+        setNews(getNewsList(response).filter(isPublishedNews));
       } catch (error) {
         console.error('Unable to load news:', error);
         setError('Unable to load news.');
@@ -45,12 +41,12 @@ function NewsSection({ selectedCategory, newsData }) {
   }, [newsData]);
 
   const sourceNews = Array.isArray(newsData) ? newsData : news;
+
   const filteredNews = sourceNews.filter((item) => {
     if (!isPublishedNews(item)) {
       return false;
     }
 
-    // Show all news
     if (selectedCategory === 'All') {
       return true;
     }
@@ -106,24 +102,24 @@ function NewsSection({ selectedCategory, newsData }) {
   return (
     <section className="w-full">
       {/* SECTION TITLE */}
-      <div className="mb-5 border-t border-gray-400 pt-2">
-        <h2 className="text-4xl font-bold text-gray-900">
-          {selectedCategory === 'All' ? 'Latest News' : selectedCategory?.name}
+      <div className="mb-6 border-t border-gray-300 pt-3">
+        <h2 className="text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">
+          {selectedCategory === 'All'
+            ? 'Latest News'
+            : selectedCategory?.name || selectedCategory}
         </h2>
 
         <p className="mt-1 text-sm text-gray-500">Latest news and updates</p>
       </div>
 
-      {/* GET FIRST NEWS AS LARGE NEWS */}
+      {/* MAIN AND SIDE NEWS */}
       {(() => {
         const mainNews = filteredNews[0];
         const sideNews = filteredNews.slice(1, 4);
 
         return (
-          <div className="grid gap-5 lg:grid-cols-[58%_42%]">
-            {/* =========================
-              LARGE NEWS
-          ========================== */}
+          <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-7">
+            {/* LARGE NEWS */}
             <article
               role={mainNews.slug ? 'link' : undefined}
               tabIndex={mainNews.slug ? 0 : undefined}
@@ -136,33 +132,32 @@ function NewsSection({ selectedCategory, newsData }) {
               }}
               className={`min-w-0 ${mainNews.slug ? 'cursor-pointer' : ''}`}>
               {/* LARGE IMAGE */}
-              <div className="w-full overflow-hidden">
+              <div className="aspect-[16/9] w-full overflow-hidden bg-gray-100">
                 {getImageUrl(mainNews) ? (
                   <img
                     src={getImageUrl(mainNews)}
                     alt={mainNews.title}
-                    className="h-[447px] w-full object-cover"
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
                   />
                 ) : (
-                  <div className="flex h-[447px] w-full items-center justify-center bg-gray-100">
-                    <span className="text-gray-400">No image available</span>
+                  <div className="flex h-full w-full items-center justify-center">
+                    <span className="text-sm text-gray-400">No image available</span>
                   </div>
                 )}
               </div>
 
               {/* LARGE NEWS TITLE */}
-              <h3 className="mt-3 pr-3 text-3xl font-bold leading-[1.15] text-gray-900">
+              <h3 className="mt-3 w-full text-xl font-bold leading-[1.35] text-gray-900 sm:text-2xl lg:text-[26px]">
                 {mainNews.title}
               </h3>
             </article>
 
-            {/* =========================
-              RIGHT SIDE NEWS
-          ========================== */}
+            {/* RIGHT SIDE NEWS */}
             <div className="min-w-0">
               {sideNews.map((item, index) => (
                 <article
-                  key={item.id}
+                  key={item.id || item.slug || index}
                   role={item.slug ? 'link' : undefined}
                   tabIndex={item.slug ? 0 : undefined}
                   onClick={() => item.slug && navigate(`/news/${item.slug}`)}
@@ -172,23 +167,20 @@ function NewsSection({ selectedCategory, newsData }) {
                       navigate(`/news/${item.slug}`);
                     }
                   }}
-                  className={`grid grid-cols-[194px_minmax(0,1fr)] gap-4 ${
+                  className={`grid min-w-0 grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-3 py-4 first:pt-0 sm:gap-4 ${
                     item.slug ? 'cursor-pointer' : ''
-                  } ${
-                    index !== sideNews.length - 1
-                      ? 'mb-5 border-b border-gray-300 pb-5'
-                      : ''
-                  }`}>
+                  } ${index !== sideNews.length - 1 ? 'border-b border-gray-300' : ''}`}>
                   {/* SMALL IMAGE */}
-                  <div className="h-[150px] w-[194px] overflow-hidden">
+                  <div className="aspect-[194/150] w-full overflow-hidden bg-gray-100">
                     {getImageUrl(item) ? (
                       <img
                         src={getImageUrl(item)}
                         alt={item.title}
-                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                      <div className="flex h-full w-full items-center justify-center">
                         <span className="text-xs text-gray-400">No image</span>
                       </div>
                     )}
@@ -196,7 +188,7 @@ function NewsSection({ selectedCategory, newsData }) {
 
                   {/* SMALL NEWS TITLE */}
                   <div className="min-w-0">
-                    <h3 className="text-2xl font-bold leading-[1.15] text-gray-900">
+                    <h3 className="text-base font-bold leading-[1.4] text-gray-900 sm:text-lg lg:text-[18px]">
                       {item.title}
                     </h3>
                   </div>

@@ -172,3 +172,6 @@
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
+@theme {
+  --font-geist: 'Geist', sans-serif;
+}

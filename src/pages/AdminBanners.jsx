@@ -1,986 +1,507 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Plus,
-  Search,
-  Pencil,
-  Trash2,
-  X,
-  Image as ImageIcon,
-  RefreshCw,
-  LoaderCircle,
-  ExternalLink,
-  Eye,
-} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Loader2, Plus, Search } from 'lucide-react';
 
-import api from '@/services/api';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 
-// --------------------------------------------------
-// HELPER FUNCTIONS
-// --------------------------------------------------
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 
-function getBackendError(error) {
-  const response = error?.response?.data;
+import { getImageUrl } from '@/lib/getImageUrl';
+import api from '@/services/api';
 
-  if (response?.errors) {
-    const firstError = Object.values(response.errors).flat()[0];
+const SORT_ORDERS = [1, 2, 3, 4, 5];
+const FIELD =
+  'h-10 w-full rounded-xl border border-[#D7DBE0] bg-[#F8F9FA] px-3 text-sm font-normal text-[#16181A] shadow-[inset_0_1px_3px_rgba(0,0,0,0.04)] placeholder:text-[#A7ADB5] focus-visible:ring-2 focus-visible:ring-[#2168CD]/20 sm:h-10';
 
-    if (firstError) return firstError;
-  }
+export default function Banners() {
+  const reduce = useReducedMotion();
+  const fileRef = useRef(null);
 
-  return response?.message || error?.message || 'Something went wrong. Please try again.';
-}
-
-// Replace localhost with LAN IP in backend image URLs
-function getImageUrl(image) {
-  if (!image) return '';
-
-  return image.replace(/^https?:\/\/localhost:8000/i, 'http://192.168.1.118:8000');
-}
-
-function isBannerActive(value) {
-  return value === true || value === 1 || value === '1';
-}
-
-function formatDate(date) {
-  if (!date) return '-';
-
-  const parsedDate = new Date(date);
-
-  if (Number.isNaN(parsedDate.getTime())) return '-';
-
-  return parsedDate.toLocaleDateString();
-}
-
-// --------------------------------------------------
-// ADMIN BANNERS
-// --------------------------------------------------
-
-function AdminBanners() {
   const [banners, setBanners] = useState([]);
-
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
+  const [pageError, setPageError] = useState('');
+  const [query, setQuery] = useState('');
 
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  const [search, setSearch] = useState('');
-
-  const [showModal, setShowModal] = useState(false);
-  const [editingBanner, setEditingBanner] = useState(null);
-
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewBanner, setPreviewBanner] = useState(null);
-
-  // --------------------------------------------------
-  // FORM STATES
-  // --------------------------------------------------
-
+  const [file, setFile] = useState(null);
   const [title, setTitle] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
-
+  const [sortOrder, setSortOrder] = useState('');
   const [link, setLink] = useState('');
-  const [sortOrder, setSortOrder] = useState(1);
-  const [isActive, setIsActive] = useState(true);
 
-  const [formErrors, setFormErrors] = useState({});
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
-  // --------------------------------------------------
-  // FETCH BANNERS
-  // --------------------------------------------------
-
-  const fetchBanners = async () => {
+  const loadBanners = async () => {
     try {
       setLoading(true);
-      setError('');
+      setPageError('');
 
       const response = await api.get('/admin/banners');
 
-      const bannerData = response.data?.data;
+      console.log('Banners response:', response.data);
 
-      setBanners(Array.isArray(bannerData) ? bannerData : []);
+      const list = response.data?.data?.data ?? response.data?.data ?? [];
+
+      setBanners(Array.isArray(list) ? list : []);
     } catch (error) {
-      console.error('Fetch banners error:', error);
-      setError(getBackendError(error));
+      console.error('Failed to load banners:', error);
+
+      setPageError(
+        error.response?.data?.message || error.message || 'Unable to load banners.',
+      );
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBanners();
+    loadBanners();
   }, []);
 
-  // --------------------------------------------------
-  // RESET FORM
-  // --------------------------------------------------
+  const handleFileChange = (event) => {
+    const selectedFile = event.target.files?.[0] ?? null;
 
-  const resetForm = () => {
-    if (imagePreview.startsWith('blob:')) {
-      URL.revokeObjectURL(imagePreview);
-    }
-
-    setTitle('');
-    setImageFile(null);
-    setImagePreview('');
-    setLink('');
-    setSortOrder(1);
-    setIsActive(true);
-
-    setFormErrors({});
-    setEditingBanner(null);
-  };
-
-  // --------------------------------------------------
-  // OPEN CREATE MODAL
-  // --------------------------------------------------
-
-  const openCreateModal = () => {
-    resetForm();
-
-    setError('');
-    setSuccess('');
-
-    setShowModal(true);
-  };
-
-  // --------------------------------------------------
-  // OPEN EDIT MODAL
-  // --------------------------------------------------
-
-  const openEditModal = (banner) => {
-    setEditingBanner(banner);
-
-    setTitle(banner.title || '');
-    setImageFile(null);
-
-    setImagePreview(getImageUrl(banner.image));
-
-    setLink(banner.link_url || banner.link || '');
-
-    setSortOrder(
-      banner.sort_order !== undefined && banner.sort_order !== null
-        ? banner.sort_order
-        : 1,
-    );
-
-    setIsActive(isBannerActive(banner.is_active));
-
-    setFormErrors({});
-    setError('');
-    setSuccess('');
-
-    setShowModal(true);
-  };
-
-  // --------------------------------------------------
-  // CLOSE MODAL
-  // --------------------------------------------------
-
-  const closeModal = () => {
-    if (saving) return;
-
-    setShowModal(false);
-    resetForm();
-  };
-
-  // --------------------------------------------------
-  // IMAGE CHANGE
-  // --------------------------------------------------
-
-  const handleImageChange = (event) => {
-    const file = event.target.files?.[0];
-
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setFormErrors((current) => ({
-        ...current,
-        image: 'Please select a valid image file.',
-      }));
-
-      setImageFile(null);
+    if (!selectedFile) {
+      setFile(null);
       return;
     }
 
-    if (imagePreview.startsWith('blob:')) {
-      URL.revokeObjectURL(imagePreview);
-    }
+    setFile(selectedFile);
 
-    setImageFile(file);
-
-    setFormErrors((current) => ({
+    setErrors((current) => ({
       ...current,
-      image: '',
+      image: undefined,
+      form: undefined,
     }));
 
-    const previewUrl = URL.createObjectURL(file);
-
-    setImagePreview(previewUrl);
+    event.target.value = '';
   };
 
-  // --------------------------------------------------
-  // VALIDATION
-  // --------------------------------------------------
+  const resetForm = () => {
+    setFile(null);
+    setTitle('');
+    setSortOrder('');
+    setLink('');
+    setErrors({});
 
-  const validateForm = () => {
-    const errors = {};
+    if (fileRef.current) {
+      fileRef.current.value = '';
+    }
+  };
+
+  const handleAdd = async (event) => {
+    event.preventDefault();
+
+    const nextErrors = {};
+
+    if (!file) {
+      nextErrors.image = 'Please choose an image.';
+    }
 
     if (!title.trim()) {
-      errors.title = 'Title is required.';
+      nextErrors.title = 'Title is required.';
     }
 
-    if (!editingBanner && !imageFile) {
-      errors.image = 'Image is required.';
+    setErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      return;
     }
 
-    if (imageFile && !imageFile.type.startsWith('image/')) {
-      errors.image = 'Please select a valid image file.';
+    const data = new FormData();
+
+    data.append('image', file);
+    data.append('title', title.trim());
+
+    if (sortOrder) {
+      data.append('sort_order', sortOrder);
     }
 
     if (link.trim()) {
-      try {
-        new URL(link.trim());
-      } catch {
-        errors.link = 'Enter a valid URL.';
-      }
+      data.append('link', link.trim());
     }
-
-    if (
-      sortOrder === '' ||
-      sortOrder === null ||
-      Number.isNaN(Number(sortOrder)) ||
-      Number(sortOrder) < 1
-    ) {
-      errors.sortOrder = 'Enter a valid sort order.';
-    }
-
-    setFormErrors(errors);
-
-    return Object.keys(errors).length === 0;
-  };
-
-  // --------------------------------------------------
-  // CREATE / UPDATE BANNER
-  // --------------------------------------------------
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    setError('');
-    setSuccess('');
-
-    if (!validateForm()) return;
 
     try {
       setSaving(true);
+      setErrors({});
 
-      const formData = new FormData();
+      const response = await api.post('/admin/banners', data);
 
-      formData.append('title', title.trim());
+      console.log('Create banner response:', response.data);
 
-      if (imageFile) {
-        formData.append('image', imageFile);
-      }
-
-      formData.append('link_url', link.trim());
-
-      formData.append('sort_order', String(Number(sortOrder)));
-
-      formData.append('is_active', isActive ? '1' : '0');
-
-      if (editingBanner) {
-        const response = await api.put(`/admin/banners/${editingBanner.id}`, formData);
-
-        if (response.data?.success === false) {
-          throw new Error(response.data?.message || 'Failed to update banner.');
-        }
-
-        setSuccess('Banner updated successfully.');
-      } else {
-        const response = await api.post('/admin/banners', formData);
-
-        if (response.data?.success === false) {
-          throw new Error(response.data?.message || 'Failed to create banner.');
-        }
-
-        setSuccess('Banner created successfully.');
-      }
-
-      setShowModal(false);
       resetForm();
 
-      await fetchBanners();
+      await loadBanners();
     } catch (error) {
-      console.error('Save banner error:', error);
+      console.error('Create banner error:', error);
 
-      const backendErrors = error?.response?.data?.errors;
-
-      if (backendErrors) {
-        const mappedErrors = {};
-
-        if (backendErrors.title) {
-          mappedErrors.title = backendErrors.title[0];
-        }
-
-        if (backendErrors.image) {
-          mappedErrors.image = backendErrors.image[0];
-        }
-
-        if (backendErrors.link_url) {
-          mappedErrors.link = backendErrors.link_url[0];
-        }
-
-        if (backendErrors.sort_order) {
-          mappedErrors.sortOrder = backendErrors.sort_order[0];
-        }
-
-        if (backendErrors.is_active) {
-          mappedErrors.isActive = backendErrors.is_active[0];
-        }
-
-        setFormErrors(mappedErrors);
-      }
-
-      setError(getBackendError(error));
+      setErrors({
+        form: error.response?.data?.message || error.message || 'Unable to add banner.',
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  // --------------------------------------------------
-  // DELETE BANNER
-  // --------------------------------------------------
+  const handleToggle = async (banner, checked) => {
+    const previousValue = Boolean(banner.is_active ?? banner.active);
 
-  const handleDelete = async (banner) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${banner.title}"?`,
+    setBanners((current) =>
+      current.map((item) =>
+        item.id === banner.id
+          ? {
+              ...item,
+              is_active: checked,
+            }
+          : item,
+      ),
     );
 
-    if (!confirmed) return;
-
     try {
-      setDeletingId(banner.id);
-      setError('');
-      setSuccess('');
-
-      const response = await api.delete(`/admin/banners/${banner.id}`);
-
-      if (response.data?.success === false) {
-        throw new Error(response.data?.message || 'Failed to delete banner.');
-      }
-
-      setBanners((current) => current.filter((item) => item.id !== banner.id));
-
-      setSuccess('Banner deleted successfully.');
-    } catch (error) {
-      console.error('Delete banner error:', error);
-      setError(getBackendError(error));
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  // --------------------------------------------------
-  // TOGGLE ACTIVE STATUS
-  // --------------------------------------------------
-
-  const handleToggleActive = async (banner) => {
-    const newStatus = !isBannerActive(banner.is_active);
-
-    try {
-      setError('');
-      setSuccess('');
-
       await api.put(`/admin/banners/${banner.id}`, {
-        is_active: newStatus,
+        is_active: checked,
       });
+    } catch (error) {
+      console.error('Update banner error:', error);
 
       setBanners((current) =>
         current.map((item) =>
-          item.id === banner.id ? { ...item, is_active: newStatus } : item,
+          item.id === banner.id
+            ? {
+                ...item,
+                is_active: previousValue,
+              }
+            : item,
         ),
       );
 
-      setSuccess(
-        newStatus ? 'Banner activated successfully.' : 'Banner deactivated successfully.',
+      setPageError(
+        error.response?.data?.message || error.message || 'Unable to update banner.',
       );
-    } catch (error) {
-      console.error('Toggle banner error:', error);
-      setError(getBackendError(error));
     }
   };
 
-  // --------------------------------------------------
-  // PREVIEW
-  // --------------------------------------------------
+  const handleDelete = async (banner) => {
+    const confirmed = window.confirm(`Delete "${banner.title}"?`);
 
-  const openPreview = (banner) => {
-    setPreviewBanner(banner);
-    setShowPreview(true);
-  };
+    if (!confirmed) {
+      return;
+    }
 
-  const closePreview = () => {
-    setShowPreview(false);
-    setPreviewBanner(null);
-  };
+    try {
+      setPageError('');
 
-  // --------------------------------------------------
-  // FILTER
-  // --------------------------------------------------
+      await api.delete(`/admin/banners/${banner.id}`);
 
-  const filteredBanners = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
+      setBanners((current) => current.filter((item) => item.id !== banner.id));
+    } catch (error) {
+      console.error('Delete banner error:', error);
 
-    if (!keyword) return banners;
-
-    return banners.filter((banner) => {
-      return (
-        banner.title?.toLowerCase().includes(keyword) ||
-        banner.image?.toLowerCase().includes(keyword) ||
-        banner.link_url?.toLowerCase().includes(keyword)
+      setPageError(
+        error.response?.data?.message || error.message || 'Unable to delete banner.',
       );
-    });
-  }, [banners, search]);
+    }
+  };
 
-  // --------------------------------------------------
-  // UI
-  // --------------------------------------------------
+  const visibleBanners = useMemo(() => {
+    const search = query.trim().toLowerCase();
+
+    if (!search) {
+      return banners;
+    }
+
+    return banners.filter((banner) => banner.title?.toLowerCase().includes(search));
+  }, [banners, query]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
       <AdminSidebar />
 
-      <main className="ml-64 min-h-screen">
-        {/* HEADER */}
+      <main className="min-h-screen min-w-0 xl:ml-[250px] 2xl:ml-[270px]">
+        <div className="min-h-screen bg-[#F6F8FA] font-geist">
+          {/* HEADER */}
+          <header className="border-b border-[#EEF0F2] bg-white">
+            <div className="flex flex-col gap-4 px-4 py-5 sm:px-6 sm:py-6 lg:flex-row lg:items-center lg:justify-between lg:gap-6 xl:px-8 xl:py-7">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold leading-tight tracking-[-0.02em] text-[#16181A] sm:text-[26px]">
+                  Banner
+                </h1>
 
-        <div className="border-b bg-white px-8 py-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Banners</h1>
-
-              <p className="mt-1 text-sm text-gray-500">
-                Create, edit and manage website banners.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
-              <Plus size={18} />
-              Add Banner
-            </button>
-          </div>
-        </div>
-
-        {/* CONTENT */}
-
-        <div className="p-8">
-          {/* ALERTS */}
-
-          {error && (
-            <div className="mb-5 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              <span>{error}</span>
-
-              <button type="button" onClick={() => setError('')}>
-                <X size={18} />
-              </button>
-            </div>
-          )}
-
-          {success && (
-            <div className="mb-5 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              <span>{success}</span>
-
-              <button type="button" onClick={() => setSuccess('')}>
-                <X size={18} />
-              </button>
-            </div>
-          )}
-
-          {/* SEARCH + REFRESH */}
-
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div className="relative max-w-md flex-1">
-              <Search
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-
-              <input
-                type="text"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search banners..."
-                className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={fetchBanners}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-              <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />
-              Refresh
-            </button>
-          </div>
-
-          {/* TABLE */}
-
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-            {loading ? (
-              <div className="flex min-h-[300px] items-center justify-center">
-                <LoaderCircle size={32} className="animate-spin text-blue-600" />
-              </div>
-            ) : filteredBanners.length === 0 ? (
-              <div className="flex min-h-[300px] flex-col items-center justify-center px-6 text-center">
-                <div className="mb-4 rounded-full bg-gray-100 p-4">
-                  <ImageIcon size={30} className="text-gray-400" />
-                </div>
-
-                <h3 className="text-lg font-semibold text-gray-900">No banners found</h3>
-
-                <p className="mt-1 max-w-md text-sm text-gray-500">
-                  {search
-                    ? 'No banners match your search.'
-                    : "You haven't created any banners yet."}
-                </p>
-
-                {!search && (
-                  <button
-                    type="button"
-                    onClick={openCreateModal}
-                    className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                    <Plus size={17} />
-                    Create Banner
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1000px]">
-                  <thead className="border-b bg-gray-50">
-                    <tr>
-                      {[
-                        'Banner',
-                        'Image',
-                        'Link',
-                        'Order',
-                        'Status',
-                        'Date',
-                        'Actions',
-                      ].map((heading) => (
-                        <th
-                          key={heading}
-                          className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          {heading}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredBanners.map((banner) => (
-                      <tr key={banner.id} className="hover:bg-gray-50">
-                        {/* BANNER */}
-
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-4">
-                            <div className="h-16 w-28 shrink-0 overflow-hidden rounded-lg bg-gray-100">
-                              <img
-                                src={getImageUrl(banner.image)}
-                                alt={banner.title}
-                                className="h-full w-full object-cover"
-                                onError={(event) => {
-                                  event.currentTarget.style.display = 'none';
-                                }}
-                              />
-                            </div>
-
-                            <div className="min-w-0">
-                              <p className="truncate font-semibold text-gray-900">
-                                {banner.title}
-                              </p>
-
-                              <p className="mt-1 text-xs text-gray-500">
-                                ID: {banner.id}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* IMAGE */}
-
-                        <td className="max-w-[220px] px-6 py-4">
-                          <span className="text-sm text-gray-500">Uploaded image</span>
-                        </td>
-
-                        {/* LINK */}
-
-                        <td className="max-w-[180px] px-6 py-4">
-                          {banner.link_url ? (
-                            <a
-                              href={banner.link_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex max-w-full items-center gap-1 text-sm text-blue-600 hover:underline"
-                              title={banner.link_url}>
-                              <span className="truncate">{banner.link_url}</span>
-
-                              <ExternalLink size={14} className="shrink-0" />
-                            </a>
-                          ) : (
-                            <span className="text-sm text-gray-400">No link</span>
-                          )}
-                        </td>
-
-                        {/* SORT ORDER */}
-
-                        <td className="px-6 py-4 text-center">
-                          <span className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
-                            {banner.sort_order ?? '-'}
-                          </span>
-                        </td>
-
-                        {/* STATUS */}
-
-                        <td className="px-6 py-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleActive(banner)}
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              isBannerActive(banner.is_active)
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
-                            {isBannerActive(banner.is_active) ? 'Active' : 'Inactive'}
-                          </button>
-                        </td>
-
-                        {/* DATE */}
-
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          {formatDate(banner.created_at || banner.updated_at)}
-                        </td>
-
-                        {/* ACTIONS */}
-
-                        <td className="px-6 py-4">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openPreview(banner)}
-                              className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-                              title="Preview">
-                              <Eye size={17} />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => openEditModal(banner)}
-                              className="rounded-lg p-2 text-blue-600 hover:bg-blue-50"
-                              title="Edit">
-                              <Pencil size={17} />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(banner)}
-                              disabled={deletingId === banner.id}
-                              className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
-                              title="Delete">
-                              {deletingId === banner.id ? (
-                                <LoaderCircle size={17} className="animate-spin" />
-                              ) : (
-                                <Trash2 size={17} />
-                              )}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* TOTAL */}
-
-          {!loading && (
-            <div className="mt-4 text-sm text-gray-500">
-              Showing {filteredBanners.length} of {banners.length} banners
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* ==================================================
-          CREATE / EDIT MODAL
-      ================================================== */}
-
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            {/* MODAL HEADER */}
-
-            <div className="flex items-center justify-between border-b px-6 py-5">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  {editingBanner ? 'Edit Banner' : 'Create Banner'}
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  {editingBanner
-                    ? 'Update the banner details.'
-                    : 'Add a new banner to your website.'}
+                <p className="mt-1 text-sm font-normal leading-5 text-[#68707A]">
+                  Manage your website banners and promotions.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={closeModal}
-                disabled={saving}
-                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-50">
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* FORM */}
-
-            <form onSubmit={handleSubmit} className="space-y-5 p-6">
-              {/* TITLE */}
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Banner Title
-                </label>
-
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  placeholder="Enter banner title"
-                  className={`w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 ${
-                    formErrors.title ? 'border-red-400' : 'border-gray-200'
-                  }`}
+              <div className="relative w-full lg:max-w-[360px]">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#9AA1AA]"
                 />
 
-                {formErrors.title && (
-                  <p className="mt-1 text-sm text-red-500">{formErrors.title}</p>
-                )}
+                <Input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search banners"
+                  aria-label="Search banners"
+                  className="h-10 rounded-xl border border-[#E2E5E8] bg-[#F8F9FA] pl-10 text-sm font-normal text-[#16181A] shadow-none placeholder:text-[#A7ADB5] focus-visible:ring-2 focus-visible:ring-[#2168CD]/20"
+                />
               </div>
+            </div>
+          </header>
 
-              {/* IMAGE UPLOAD */}
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Banner Image
-                </label>
-
-                <div
-                  className={`rounded-xl border-2 border-dashed p-4 ${
-                    formErrors.image
-                      ? 'border-red-400 bg-red-50'
-                      : 'border-gray-300 bg-gray-50'
-                  }`}>
+          {/* CONTENT */}
+          <div className="flex min-w-0 flex-col gap-5 p-4 sm:gap-6 sm:p-6 xl:p-8">
+            {/* ADD BANNER FORM */}
+            <motion.form
+              onSubmit={handleAdd}
+              noValidate
+              initial={
+                reduce
+                  ? false
+                  : {
+                      opacity: 0,
+                      y: 8,
+                    }
+              }
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                duration: 0.3,
+                ease: 'easeOut',
+              }}
+              className="rounded-2xl border border-[#EEF0F2] bg-white p-4 sm:p-5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[180px_minmax(180px,1.2fr)_160px_minmax(180px,1fr)_80px] xl:items-center">
+                {/* IMAGE */}
+                <div>
                   <input
-                    id="banner-image"
+                    ref={fileRef}
                     type="file"
                     accept="image/*"
-                    onChange={handleImageChange}
-                    className="block w-full cursor-pointer text-sm text-gray-600 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-700"
+                    className="hidden"
+                    onChange={handleFileChange}
                   />
 
-                  <p className="mt-2 text-xs text-gray-500">
-                    Select an image from your computer. JPG, JPEG, PNG, WEBP, etc.
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={saving}
+                    aria-label="Choose banner image"
+                    className="flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-dashed border-[#C7CBD1] bg-[#F8F9FA] px-3 text-sm font-medium text-[#7C838C] transition-colors hover:bg-[#F1F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2168CD]/30 disabled:cursor-not-allowed disabled:opacity-60">
+                    <Plus aria-hidden="true" className="size-4 shrink-0" />
+
+                    <span className={`truncate ${file ? 'text-[#16181A]' : ''}`}>
+                      {file ? file.name : 'Choose image'}
+                    </span>
+                  </button>
                 </div>
 
-                {formErrors.image && (
-                  <p className="mt-1 text-sm text-red-500">{formErrors.image}</p>
-                )}
+                {/* TITLE */}
+                <Input
+                  value={title}
+                  onChange={(event) => {
+                    setTitle(event.target.value);
 
-                {/* IMAGE PREVIEW */}
+                    setErrors((current) => ({
+                      ...current,
+                      title: undefined,
+                      form: undefined,
+                    }));
+                  }}
+                  placeholder="Banner title"
+                  aria-label="Banner title"
+                  aria-invalid={Boolean(errors.title)}
+                  disabled={saving}
+                  className={`${FIELD} ${errors.title ? 'border-red-400' : ''}`}
+                />
 
-                {imagePreview && (
-                  <div className="mt-4 overflow-hidden rounded-xl border bg-gray-50">
-                    <div className="flex items-center justify-between border-b px-4 py-2">
-                      <p className="text-xs font-semibold text-gray-600">Image Preview</p>
+                {/* PRIORITY */}
+                <Select value={sortOrder} onValueChange={setSortOrder} disabled={saving}>
+                  <SelectTrigger
+                    aria-label="Sort order"
+                    className="h-10 w-full rounded-xl border border-[#D7DBE0] bg-[#F8F9FA] px-3 text-sm font-normal text-[#16181A] shadow-none data-[placeholder]:text-[#A7ADB5] focus:ring-2 focus:ring-[#2168CD]/20">
+                    <SelectValue placeholder="Sort order" />
+                  </SelectTrigger>
 
-                      {imageFile && (
-                        <span className="text-xs text-gray-500">{imageFile.name}</span>
-                      )}
-                    </div>
+                  <SelectContent>
+                    {SORT_ORDERS.map((item) => (
+                      <SelectItem key={item} value={String(item)} className="text-sm">
+                        {item}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                    <div className="flex min-h-[180px] items-center justify-center p-4">
-                      <img
-                        src={
-                          imagePreview.startsWith('blob:')
-                            ? imagePreview
-                            : getImageUrl(imagePreview)
-                        }
-                        alt="Banner preview"
-                        className="max-h-64 max-w-full rounded-lg object-contain"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {editingBanner && !imageFile && imagePreview && (
-                  <p className="mt-2 text-xs text-gray-500">
-                    Current image is being used. Select a new image above if you want to
-                    replace it.
-                  </p>
-                )}
-              </div>
-
-              {/* LINK */}
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Link
-                  <span className="ml-1 font-normal text-gray-400">(optional)</span>
-                </label>
-
-                <input
-                  type="url"
+                {/* LINK */}
+                <Input
                   value={link}
                   onChange={(event) => setLink(event.target.value)}
-                  placeholder="https://example.com"
-                  className={`w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 ${
-                    formErrors.link ? 'border-red-400' : 'border-gray-200'
-                  }`}
-                />
-
-                {formErrors.link && (
-                  <p className="mt-1 text-sm text-red-500">{formErrors.link}</p>
-                )}
-              </div>
-
-              {/* SORT ORDER */}
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Sort Order
-                </label>
-
-                <input
-                  type="number"
-                  min="1"
-                  value={sortOrder}
-                  onChange={(event) => setSortOrder(event.target.value)}
-                  placeholder="1"
-                  className={`w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 ${
-                    formErrors.sortOrder ? 'border-red-400' : 'border-gray-200'
-                  }`}
-                />
-
-                <p className="mt-1 text-xs text-gray-500">Lower numbers appear first.</p>
-
-                {formErrors.sortOrder && (
-                  <p className="mt-1 text-sm text-red-500">{formErrors.sortOrder}</p>
-                )}
-              </div>
-
-              {/* ACTIVE */}
-
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <label className="flex cursor-pointer items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={(event) => setIsActive(event.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">Active Banner</p>
-
-                    <p className="text-xs text-gray-500">
-                      Make this banner visible on the public website.
-                    </p>
-                  </div>
-                </label>
-              </div>
-
-              {/* BUTTONS */}
-
-              <div className="flex justify-end gap-3 border-t pt-5">
-                <button
-                  type="button"
-                  onClick={closeModal}
+                  placeholder="Link (optional)"
+                  aria-label="Link (optional)"
                   disabled={saving}
-                  className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-                  Cancel
-                </button>
+                  className={FIELD}
+                />
 
-                <button
+                {/* ADD BUTTON */}
+                <Button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
-                  {saving && <LoaderCircle size={17} className="animate-spin" />}
-
-                  {saving
-                    ? editingBanner
-                      ? 'Updating...'
-                      : 'Creating...'
-                    : editingBanner
-                      ? 'Update Banner'
-                      : 'Create Banner'}
-                </button>
+                  className="h-10 gap-1.5 rounded-xl bg-[#2168CD] px-4 text-sm font-medium text-white shadow-none hover:bg-[#1B58B0] sm:col-span-2 xl:col-span-1">
+                  {saving && (
+                    <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  )}
+                  Add
+                </Button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* ==================================================
-          PREVIEW MODAL
-      ================================================== */}
+              <AnimatePresence>
+                {(errors.image || errors.title || errors.form) && (
+                  <motion.p
+                    role="alert"
+                    initial={{
+                      opacity: 0,
+                      y: -3,
+                    }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                    }}
+                    exit={{
+                      opacity: 0,
+                    }}
+                    className="mt-2.5 text-xs font-medium text-[#981733]">
+                    {errors.image || errors.title || errors.form}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </motion.form>
 
-      {showPreview && previewBanner && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4">
-          <div className="relative w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <button
-              type="button"
-              onClick={closePreview}
-              className="absolute right-4 top-4 z-10 rounded-full bg-black/60 p-2 text-white hover:bg-black/80">
-              <X size={20} />
-            </button>
+            {/* PAGE ERROR */}
+            {pageError && (
+              <div
+                role="alert"
+                className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-[#981733]">
+                {pageError}
+              </div>
+            )}
 
-            <div className="bg-gray-100">
-              <img
-                src={getImageUrl(previewBanner.image)}
-                alt={previewBanner.title}
-                className="max-h-[70vh] w-full object-contain"
-              />
-            </div>
+            {/* BANNERS */}
+            <section className="flex flex-col gap-3">
+              {/* LOADING */}
+              {loading ? (
+                <>
+                  <Skeleton className="h-[220px] w-full rounded-2xl" />
+                  <Skeleton className="h-[220px] w-full rounded-2xl" />
+                </>
+              ) : visibleBanners.length === 0 ? (
+                /* EMPTY */
+                <div className="rounded-2xl border border-[#EEF0F2] bg-white px-5 py-12 text-center">
+                  <p className="text-sm font-medium text-[#4A4E54]">
+                    {query
+                      ? 'No banners match your search.'
+                      : 'No banners yet. Add your first one.'}
+                  </p>
+                </div>
+              ) : (
+                /* BANNER LIST */
+                <AnimatePresence initial={!reduce} mode="popLayout">
+                  {visibleBanners.map((banner) => {
+                    const src = getImageUrl(banner.image || banner.image_path);
 
-            <div className="p-5">
-              <h3 className="text-lg font-bold text-gray-900">{previewBanner.title}</h3>
+                    const active = Boolean(banner.is_active ?? banner.active);
 
-              {previewBanner.link_url && (
-                <a
-                  href={previewBanner.link_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 hover:underline">
-                  Open banner link
-                  <ExternalLink size={14} />
-                </a>
+                    return (
+                      <motion.article
+                        key={banner.id}
+                        layout={!reduce}
+                        initial={
+                          reduce
+                            ? false
+                            : {
+                                opacity: 0,
+                                y: 8,
+                              }
+                        }
+                        animate={{
+                          opacity: 1,
+                          y: 0,
+                        }}
+                        exit={{
+                          opacity: 0,
+                          scale: 0.98,
+                        }}
+                        transition={{
+                          duration: 0.22,
+                          ease: 'easeOut',
+                        }}
+                        className="overflow-hidden rounded-2xl border border-[#EEF0F2] bg-white p-3.5 sm:p-4">
+                        {/* IMAGE */}
+                        <div className="h-[150px] w-full overflow-hidden rounded-xl bg-[#EEF1F4] sm:h-[175px] lg:h-[190px]">
+                          {src ? (
+                            <img
+                              src={src}
+                              alt={banner.title || 'Banner'}
+                              loading="lazy"
+                              decoding="async"
+                              className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.01]"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-sm font-normal text-[#9AA1AA]">
+                              No image
+                            </div>
+                          )}
+                        </div>
+
+                        {/* DETAILS */}
+                        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <h2 className="truncate text-base font-semibold leading-5 text-[#16181A] sm:text-[17px]">
+                              {banner.title}
+                            </h2>
+
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-xs font-medium text-[#68707A]">
+                                Active
+                              </span>
+
+                              <Switch
+                                checked={active}
+                                onCheckedChange={(checked) =>
+                                  handleToggle(banner, checked)
+                                }
+                                aria-label={`Toggle ${banner.title}`}
+                                className="h-4 w-[29px] border border-[#C7CBD1] bg-transparent px-0.5 data-[state=checked]:border-[#2168CD] data-[state=checked]:bg-[#2168CD] [&>span]:size-2.5 [&>span]:bg-[#C7CBD1] data-[state=checked]:[&>span]:bg-white"
+                              />
+                            </div>
+                          </div>
+
+                          <Button
+                            type="button"
+                            onClick={() => handleDelete(banner)}
+                            className="h-9 shrink-0 rounded-xl bg-[#F5365C] px-4 text-xs font-medium text-white shadow-none hover:bg-[#DC2A4F]">
+                            Delete
+                          </Button>
+                        </div>
+                      </motion.article>
+                    );
+                  })}
+                </AnimatePresence>
               )}
-            </div>
+            </section>
           </div>
         </div>
-      )}
-    </div>
+      </main>
+    </>
   );
 }
-
-export default AdminBanners;

@@ -6,14 +6,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import api from '@/services/api';
 import { getNewsImageUrl, getNewsList, isPublishedNews } from '@/lib/news';
 
-/**
- * Props:
- *  - onSelect: (item) => void
+/*
+ * News title styling
  */
-
 const titleClass =
-  "font-['Mukta',sans-serif] text-lg font-semibold leading-[1.2] tracking-[0.002em] text-black transition-colors group-hover:underline underline-offset-4 sm:text-xl md:text-2xl xl:text-[32px] xl:leading-[38px]";
+  "font-['Mukta',sans-serif] text-base font-semibold leading-[1.4] tracking-[0.002em] text-[#16181A] transition-colors group-hover:underline underline-offset-4 sm:text-[17px] md:text-lg xl:text-[19px]";
 
+/*
+ * News card
+ */
 function Card({ story, ratio, variants, getImageUrl, onSelect, className = '' }) {
   const src = getImageUrl(story);
 
@@ -30,12 +31,12 @@ function Card({ story, ratio, variants, getImageUrl, onSelect, className = '' })
           onSelect(story);
         }
       }}
-      className={`group flex w-full cursor-pointer flex-col items-start gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 ${className}`}>
+      className={`group flex w-full cursor-pointer flex-col items-start gap-3 px-0 outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 ${className}`}>
       <AspectRatio ratio={ratio} className="w-full overflow-hidden bg-neutral-200">
         {src ? (
           <img
             src={src}
-            alt=""
+            alt={story.title || ''}
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
           />
@@ -76,17 +77,9 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           },
         });
 
-        /*
-         * We need only 3 stories:
-         *
-         * news[0] = main
-         * news[1] = left
-         * news[2] = right
-         */
         setNews(getNewsList(response).filter(isPublishedNews).slice(0, 3));
       } catch (error) {
         console.error('Unable to load news:', error);
-
         setNews([]);
       } finally {
         setLoading(false);
@@ -102,6 +95,9 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   const getImageUrl = (item) =>
     getNewsImageUrl(item?.featured_image || item?.images?.[0]);
 
+  /*
+   * Animation
+   */
   const container = {
     hidden: {},
     show: {
@@ -127,8 +123,11 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
     },
   };
 
+  /*
+   * Equal spacing and responsive grid
+   */
   const gridClass =
-    'mx-auto grid w-full max-w-[1680px] grid-cols-1 items-center gap-6 md:grid-cols-2 lg:grid-cols-[402fr_828fr_402fr]';
+    'mx-auto grid w-full max-w-[1680px] grid-cols-1 items-start gap-6 md:grid-cols-2 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.8fr)_minmax(0,0.9fr)] lg:gap-0 lg:divide-x lg:divide-gray-300';
 
   /*
    * Loading UI
@@ -136,11 +135,11 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   if (!Array.isArray(newsData) && loading) {
     return (
       <div className={gridClass}>
-        <Skeleton className="aspect-[402/502] w-full rounded-none md:col-span-2 md:order-first lg:order-none lg:col-span-1" />
+        <Skeleton className="aspect-[402/386] w-full rounded-none lg:px-5" />
 
-        <Skeleton className="aspect-[828/609] w-full rounded-none" />
+        <Skeleton className="aspect-[828/532] w-full rounded-none lg:px-5" />
 
-        <Skeleton className="aspect-[402/502] w-full rounded-none" />
+        <Skeleton className="aspect-[402/386] w-full rounded-none lg:px-5" />
       </div>
     );
   }
@@ -148,6 +147,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   const stories = Array.isArray(newsData)
     ? newsData.filter(isPublishedNews).slice(0, 3)
     : news;
+
   const [main, left, right] = stories;
 
   if (!main) {
@@ -165,7 +165,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
         amount: 0.15,
       }}
       className={gridClass}>
-      {/* Left card */}
+      {/* LEFT CARD */}
       {left && (
         <Card
           story={left}
@@ -173,21 +173,21 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           variants={item}
           getImageUrl={getImageUrl}
           onSelect={onSelect}
-          className="md:col-start-1 md:row-start-2 lg:col-start-1 lg:row-start-1"
+          className="md:col-start-1 md:row-start-2 lg:col-start-1 lg:row-start-1 lg:px-5 lg:pr-5"
         />
       )}
 
-      {/* Main centre card */}
+      {/* MAIN CENTRE CARD */}
       <Card
         story={main}
         ratio={828 / 532}
         variants={item}
         getImageUrl={getImageUrl}
         onSelect={onSelect}
-        className="order-first md:order-none md:col-span-2 md:col-start-1 md:row-start-1 lg:col-span-1 lg:col-start-2"
+        className="order-first md:order-none md:col-span-2 md:col-start-1 md:row-start-1 lg:col-span-1 lg:col-start-2 lg:px-5"
       />
 
-      {/* Right card */}
+      {/* RIGHT CARD */}
       {right && (
         <Card
           story={right}
@@ -195,7 +195,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           variants={item}
           getImageUrl={getImageUrl}
           onSelect={onSelect}
-          className="md:col-start-2 md:row-start-2 lg:col-start-3 lg:row-start-1"
+          className="md:col-start-2 md:row-start-2 lg:col-start-3 lg:row-start-1 lg:px-5 lg:pl-5"
         />
       )}
     </motion.section>

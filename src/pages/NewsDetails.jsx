@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -14,6 +14,7 @@ import api from '@/services/api';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getImageUrl } from '@/lib/getImageUrl';
 
 /**
  * Route:
@@ -28,61 +29,9 @@ import { Skeleton } from '@/components/ui/skeleton';
  * a frontend-accessible image URL.
  */
 
-const getImageUrl = (imagePath) => {
-  if (!imagePath) {
-    return '';
-  }
-
-  let imageUrl = String(imagePath).trim();
-
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-
-  const backendUrl = apiUrl.replace(/\/api\/?$/, '');
-
-  /*
-   * Backend returns:
-   * /storage/news/image.jpg
-   */
-  if (imageUrl.startsWith('/')) {
-    return `${backendUrl}${imageUrl}`;
-  }
-
-  /*
-   * Backend may return:
-   * http://localhost:8000/storage/news/image.jpg
-   *
-   * Change localhost to the actual backend host.
-   */
-  if (
-    imageUrl.startsWith('http://localhost:') ||
-    imageUrl.startsWith('https://localhost:')
-  ) {
-    try {
-      const image = new URL(imageUrl);
-      const backend = new URL(backendUrl);
-
-      image.protocol = backend.protocol;
-      image.hostname = backend.hostname;
-      image.port = backend.port;
-
-      return image.toString();
-    } catch {
-      return imageUrl;
-    }
-  }
-
-  /*
-   * Already a complete URL.
-   */
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-    return imageUrl;
-  }
-
-  /*
-   * Relative path.
-   */
-  return `${backendUrl}/${imageUrl}`;
-};
+/*
+ * Get main image and gallery images.
+ */
 const getImages = (item) => {
   const all = (item?.images || [])
     .map((img) => getImageUrl(typeof img === 'string' ? img : img?.url || img?.path))
@@ -98,12 +47,6 @@ const getImages = (item) => {
 
 /*
  * Convert news body into paragraphs.
- *
- * Backend normally returns:
- * body: "paragraph one\nparagraph two"
- *
- * This also supports an array if the backend
- * ever returns body/content as an array.
  */
 const getParagraphs = (item) => {
   const raw = item?.content ?? item?.body ?? item?.description ?? '';
@@ -135,6 +78,7 @@ function NewsDetails() {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [preview, setPreview] = useState('');
 
   /*
    * Fetch news details from backend.
@@ -156,7 +100,6 @@ function NewsDetails() {
           setError(response.data?.message || 'News not found.');
 
           setArticle(null);
-
           return;
         }
 
@@ -188,15 +131,35 @@ function NewsDetails() {
   }, [slug]);
 
   /*
-   * Scroll to top when opening
-   * another news article.
+   * Scroll to top when opening another article.
    */
   useEffect(() => {
     window.scrollTo({
       top: 0,
       behavior: 'smooth',
     });
+
+    setPreview('');
   }, [slug]);
+
+  /*
+   * Close image preview with Escape key.
+   */
+  useEffect(() => {
+    if (!preview) return;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setPreview('');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [preview]);
 
   /*
    * Animation helper.
@@ -222,9 +185,10 @@ function NewsDetails() {
   });
 
   /*
-   * Image from backend.
+   * Images from backend.
    */
   const { main: image, gallery } = getImages(article);
+
   /*
    * News body paragraphs.
    */
@@ -270,15 +234,15 @@ function NewsDetails() {
             ARTICLE
         ========================== */}
         {!loading && !error && article && (
-          <article className="flex w-full flex-col items-center gap-8 font-['Mukta',sans-serif] sm:gap-10 lg:gap-12 xl:gap-14">
+          <article className="flex w-full flex-col items-center gap-6 font-['Mukta',sans-serif] sm:gap-7 lg:gap-8 xl:gap-9">
             {/* =====================
                   CATEGORY
-              ====================== */}
+            ====================== */}
             {article.category?.name && (
               <motion.div
                 {...fadeUp(0)}
                 className="flex items-center gap-3 rounded-sm bg-[linear-gradient(90deg,#2168CD_0%,#164B99_100%)] px-4 py-2 shadow-sm sm:px-5 sm:py-2.5">
-                <span className="text-2xl font-bold leading-[1.2] tracking-[0.002em] text-[#F0F3FE] sm:text-4xl md:text-5xl xl:text-[56px] xl:leading-[67px]">
+                <span className="text-lg font-bold leading-[1.3] tracking-[0.002em] text-[#F0F3FE] sm:text-xl md:text-2xl xl:text-3xl">
                   {article.category.name}
                 </span>
               </motion.div>
@@ -287,18 +251,18 @@ function NewsDetails() {
             <div className="flex w-full flex-col items-center gap-6 sm:gap-8 xl:gap-6">
               {/* =====================
                     HERO BLOCK
-                ====================== */}
+              ====================== */}
               <div className="flex w-full flex-col items-center gap-2">
                 {/* Author + Date */}
                 <motion.div
                   {...fadeUp(0.1)}
-                  className="flex w-full items-center justify-between border-b border-[#E5E7EB] pb-3 text-sm leading-6 tracking-[0.002em] text-[#6B7280] sm:text-base">
+                  className="flex w-full items-center justify-between border-b border-[#E5E7EB] pb-2 text-xs leading-5 tracking-[0.002em] text-[#6B7280] sm:text-sm">
                   <span>{article.author}</span>
 
                   <span>{formatDate(article.published_at)}</span>
                 </motion.div>
 
-                <div className="flex w-full flex-col items-start gap-6">
+                <div className="flex w-full flex-col items-start gap-4 sm:gap-5">
                   {/* Featured Image */}
                   {image && (
                     <motion.div {...fadeUp(0.15)} className="w-full">
@@ -313,6 +277,8 @@ function NewsDetails() {
                       </AspectRatio>
                     </motion.div>
                   )}
+
+                  {/* Gallery Images */}
                   {gallery.length > 0 && (
                     <motion.ul
                       {...fadeUp(0.2)}
@@ -343,7 +309,7 @@ function NewsDetails() {
                   {/* Title */}
                   <motion.h1
                     {...fadeUp(0.2)}
-                    className="w-full text-center text-2xl font-bold leading-[1.3] tracking-[-0.01em] text-[#16181A] sm:text-3xl md:text-4xl lg:text-5xl xl:text-[52px] xl:leading-[1.2]">
+                    className="w-full text-center text-xl font-bold leading-[1.35] tracking-[-0.01em] text-[#16181A] sm:text-2xl md:text-3xl lg:text-4xl xl:text-[40px] xl:leading-[1.25]">
                     {article.title}
                   </motion.h1>
 
@@ -351,7 +317,7 @@ function NewsDetails() {
                   {article.caption && (
                     <motion.p
                       {...fadeUp(0.25)}
-                      className="w-full text-center text-base font-normal leading-[1.6] tracking-[0.002em] text-[#6B7280] sm:text-lg md:text-xl xl:text-2xl xl:leading-[1.5]">
+                      className="w-full text-center text-sm font-normal leading-[1.6] tracking-[0.002em] text-[#6B7280] sm:text-base md:text-lg xl:text-xl">
                       {article.caption}
                     </motion.p>
                   )}
@@ -359,16 +325,17 @@ function NewsDetails() {
               </div>
 
               {/* =====================
-                    BODY*/}
+                    BODY
+              ====================== */}
               {paragraphs.length > 0 && (
                 <motion.div
                   {...fadeUp(0.3)}
-                  className="flex w-full justify-center px-4 pt-0 pb-4 sm:px-6 sm:pt-1 sm:pb-5 md:px-10 lg:px-16 lg:pt-2 lg:pb-6 xl:px-[180px] xl:pt-2 xl:pb-8">
+                  className="flex w-full justify-center px-4 pt-0 pb-3 sm:px-6 sm:pt-1 sm:pb-4 md:px-10 lg:px-16 lg:pt-1 lg:pb-5 xl:px-[180px] xl:pt-1 xl:pb-6">
                   <div className="flex w-full max-w-[1200px] flex-col gap-4 sm:gap-5 lg:gap-6">
                     {paragraphs.map((text, index) => (
                       <p
                         key={index}
-                        className="w-full text-[18px] font-normal leading-[1.7] tracking-normal text-[#333333] sm:text-[19px] md:text-[20px] lg:text-[21px] xl:text-[22px]">
+                        className="w-full text-base font-normal leading-[1.75] tracking-normal text-[#333333] sm:text-[17px] md:text-lg lg:text-lg xl:text-[19px]">
                         {text}
                       </p>
                     ))}
@@ -379,9 +346,35 @@ function NewsDetails() {
           </article>
         )}
       </main>
+
+      {/* =========================
+          IMAGE PREVIEW
+      ========================== */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setPreview('')}>
+          <button
+            type="button"
+            aria-label="Close image preview"
+            onClick={() => setPreview('')}
+            className="absolute top-5 right-5 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20">
+            <X className="size-6" />
+          </button>
+
+          <img
+            src={preview}
+            alt="Gallery preview"
+            onClick={(event) => event.stopPropagation()}
+            className="max-h-[90vh] max-w-full object-contain"
+          />
+        </div>
+      )}
+
       <Banner />
 
       <Trending />
+
       <Footer />
     </>
   );

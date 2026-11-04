@@ -27,7 +27,6 @@ const PER_PAGE = 6;
 // Cache each category/page response for 60 seconds.
 const categoryNewsCache = new Map();
 const CATEGORY_CACHE_TTL = 60 * 1000;
-// const { categoryId } = useParams();
 
 /* =========================================================
    IMAGE URL
@@ -42,14 +41,12 @@ const getImageUrl = (item) => {
 
   const imageUrl = String(imagePath).trim();
 
-  // Get backend origin from VITE_API_URL
   const apiUrl =
     import.meta.env.VITE_API_URL ||
     'https://cables-babies-eliminate-dozens.trycloudflare.com/api';
 
   const backendUrl = apiUrl.replace(/\/api\/?$/, '');
 
-  // Replace localhost image URLs with current backend URL
   if (
     imageUrl.startsWith('http://localhost:8000') ||
     imageUrl.startsWith('https://localhost:8000')
@@ -57,12 +54,10 @@ const getImageUrl = (item) => {
     return imageUrl.replace(/^https?:\/\/localhost:8000/, backendUrl);
   }
 
-  // Already a complete URL
   if (imageUrl.startsWith('https://') || imageUrl.startsWith('http://')) {
     return imageUrl;
   }
 
-  // Relative image path
   if (imageUrl.startsWith('/')) {
     return `${backendUrl}${imageUrl}`;
   }
@@ -147,14 +142,14 @@ function StoryRow({ story, index, variants, onSelect }) {
           onSelect(story);
         }
       }}
-      className={`group grid cursor-pointer grid-cols-1 items-start gap-3 py-4 outline-none focus-visible:ring-2 focus-visible:ring-[#16181A] focus-visible:ring-offset-2 sm:gap-4 sm:py-5 md:grid-cols-[40fr_60fr] lg:gap-5 lg:py-5 xl:py-6 ${
+      className={`group grid cursor-pointer grid-cols-1 items-start gap-5 py-6 outline-none focus-visible:ring-2 focus-visible:ring-[#16181A] focus-visible:ring-offset-4 sm:gap-6 sm:py-7 md:grid-cols-[38%_62%] lg:gap-7 lg:py-8 xl:gap-8 xl:py-9 ${
         index > 0 ? 'border-t border-[#DDE0E3]' : ''
       }`}>
       {/* IMAGE */}
 
       <AspectRatio
-        ratio={504 / 300}
-        className="w-full max-w-full overflow-hidden bg-neutral-200">
+        ratio={16 / 9}
+        className="w-full overflow-hidden rounded-none bg-neutral-200">
         {src && !imageFailed ? (
           <img
             src={src}
@@ -173,21 +168,32 @@ function StoryRow({ story, index, variants, onSelect }) {
 
       {/* CONTENT */}
 
-      <div className="flex min-w-0 flex-col items-start gap-3 font-['Mukta',sans-serif] tracking-[0.002em] sm:gap-4 xl:gap-6">
-        <div className="flex w-full flex-col items-start gap-2">
+      <div className="flex min-w-0 flex-col items-start gap-4 font-['Mukta',sans-serif] tracking-[0.002em] sm:gap-5 lg:gap-6">
+        <div className="flex w-full flex-col items-start gap-2.5 sm:gap-3">
           {/* NEWS TITLE */}
 
           <h2
-            className="line-clamp-3 w-full text-xl font-bold leading-[1.3] text-[#16181A]
-            transition-colors group-hover:text-[#164B99] sm:text-2xl md:text-2xl
-            lg:text-2xl xl:text-3xl 2xl:text-4xl">
+            className="
+              line-clamp-3
+              w-full
+              text-lg
+              font-bold
+              leading-[1.35]
+              text-[#16181A]
+              transition-colors
+              group-hover:text-[#164B99]
+              sm:text-xl
+              md:text-[22px]
+              lg:text-[24px]
+              xl:text-[26px]
+            ">
             {story.title}
           </h2>
 
           {/* DATE */}
 
           {date && (
-            <p className="text-base leading-[1.6] text-[#16181A] sm:text-lg xl:text-2xl xl:leading-[38px]">
+            <p className="text-sm leading-6 text-[#555B63] sm:text-[15px] lg:text-base">
               {date}
             </p>
           )}
@@ -195,7 +201,7 @@ function StoryRow({ story, index, variants, onSelect }) {
           {/* AUTHOR */}
 
           {story.author && (
-            <p className="text-base leading-[1.6] text-[#16181A] sm:text-lg xl:text-2xl xl:leading-[38px]">
+            <p className="text-sm leading-6 text-[#555B63] sm:text-[15px] lg:text-base">
               {story.author}
             </p>
           )}
@@ -204,7 +210,19 @@ function StoryRow({ story, index, variants, onSelect }) {
         {/* NEWS DESCRIPTION */}
 
         {description && (
-          <p className="line-clamp-3 w-full text-sm leading-7 text-[#4A4E54] sm:text-base xl:text-lg xl:leading-[38px]">
+          <p
+            className="
+              line-clamp-3
+              w-full
+              text-sm
+              leading-6
+              text-[#4A4E54]
+              sm:text-[15px]
+              sm:leading-7
+              lg:text-base
+              lg:leading-7
+              xl:text-[17px]
+            ">
             {description}
           </p>
         )}
@@ -218,7 +236,7 @@ function StoryRow({ story, index, variants, onSelect }) {
 ========================================================= */
 
 const pageLinkClass =
-  "size-8 shrink-0 rounded-lg border-0 bg-transparent p-0 font-['Mukta',sans-serif] text-xl font-normal leading-6 text-[#16181A] shadow-none hover:bg-[#C7CBD1]/40 hover:text-[#16181A]";
+  "size-8 shrink-0 rounded-lg border-0 bg-transparent p-0 font-['Mukta',sans-serif] text-base font-normal leading-6 text-[#16181A] shadow-none hover:bg-[#C7CBD1]/40 hover:text-[#16181A]";
 
 const activeLinkClass =
   'bg-[#C7CBD1] text-[#F9F9FA] hover:bg-[#C7CBD1] hover:text-[#F9F9FA]';
@@ -237,9 +255,9 @@ function Pager({ page, totalPages, onChange }) {
   };
 
   return (
-    <div className="flex w-full justify-center sm:justify-end">
+    <div className="flex w-full justify-center border-t border-[#E1E4E8] pt-8 sm:justify-end sm:pt-10">
       <Pagination className="mx-0 w-auto">
-        <PaginationContent className="flex-wrap justify-center gap-2">
+        <PaginationContent className="flex-wrap justify-center gap-1.5 sm:gap-2">
           {/* PREVIOUS */}
 
           <PaginationItem>
@@ -247,10 +265,10 @@ function Pager({ page, totalPages, onChange }) {
               href="#"
               aria-label="अघिल्लो"
               onClick={(e) => go(e, page - 1)}
-              className={`group w-auto gap-2 ${pageLinkClass} text-[#4A4E54] hover:bg-transparent hover:text-[#16181A] ${
+              className={`group w-auto gap-1.5 ${pageLinkClass} text-[#4A4E54] hover:bg-transparent hover:text-[#16181A] ${
                 page === 1 ? 'pointer-events-none opacity-50' : ''
               }`}>
-              <ArrowLeft className="size-5 shrink-0 transition-transform group-hover:-translate-x-0.5" />
+              <ArrowLeft className="size-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
 
               <span className="hidden sm:inline">अघिल्लो</span>
             </PaginationLink>
@@ -284,12 +302,12 @@ function Pager({ page, totalPages, onChange }) {
               href="#"
               aria-label="अर्को"
               onClick={(e) => go(e, page + 1)}
-              className={`group w-auto gap-2 ${pageLinkClass} hover:bg-transparent ${
+              className={`group w-auto gap-1.5 ${pageLinkClass} hover:bg-transparent ${
                 page === totalPages ? 'pointer-events-none opacity-50' : ''
               }`}>
               <span className="hidden sm:inline">अर्को</span>
 
-              <ArrowRight className="size-5 shrink-0 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
             </PaginationLink>
           </PaginationItem>
         </PaginationContent>
@@ -338,7 +356,6 @@ function Category() {
     const cacheKey = `${categoryId}-${page}`;
     const cached = categoryNewsCache.get(cacheKey);
 
-    // Reuse a recent response when the user returns to this category/page.
     if (cached && Date.now() - cached.savedAt < CATEGORY_CACHE_TTL) {
       setNews(cached.news);
       setCategoryName(cached.categoryName);
@@ -358,7 +375,6 @@ function Category() {
         setLoading(true);
         setError('');
 
-        // One request only: fetch the selected category directly by ID.
         const response = await api.get(`/category/${categoryId}/news`, {
           params: {
             page,
@@ -368,7 +384,9 @@ function Category() {
         });
 
         console.log(
-          `Category ${categoryId} API time: ${Math.round(performance.now() - startedAt)}ms`,
+          `Category ${categoryId} API time: ${Math.round(
+            performance.now() - startedAt,
+          )}ms`,
         );
 
         if (!response.data?.success) {
@@ -392,7 +410,6 @@ function Category() {
 
         if (!active) return;
 
-        // Cache only successful responses.
         categoryNewsCache.set(cacheKey, result);
 
         setNews(result.news);
@@ -432,8 +449,6 @@ function Category() {
 
     return () => {
       active = false;
-
-      // Cancel the previous category/page request when the user navigates.
       controller.abort();
     };
   }, [categoryId, page]);
@@ -500,7 +515,7 @@ function Category() {
     <>
       <Header />
 
-      <main className="mx-auto flex w-full max-w-[1920px] flex-col items-start gap-6 px-4 pb-10 sm:gap-10 sm:px-6 md:px-10 lg:px-16 xl:gap-20 xl:px-[120px] xl:pb-20">
+      <main className="mx-auto flex w-full max-w-[1920px] flex-col items-start px-4 pb-12 sm:px-6 sm:pb-14 md:px-10 lg:px-16 xl:px-[120px] xl:pb-20">
         {/* CATEGORY HEADING */}
 
         <motion.div
@@ -520,28 +535,56 @@ function Category() {
             duration: 0.4,
             ease: 'easeOut',
           }}
-          className="flex items-center gap-4 bg-[linear-gradient(90deg,rgba(33,104,205,0.2)_2.48%,rgba(17,52,103,0.2)_100%),#2168CD] px-3 py-1.5 sm:px-4 sm:py-2">
-          <h1 className="font-['Mukta',sans-serif] text-xl font-bold leading-[1.2] tracking-[0.002em] text-[#324dac] sm:text-2xl xl:text-[32px] xl:leading-[38px]">
+          className="
+            mt-6
+            flex
+            w-fit
+            items-center
+            border-l-[5px]
+            border-[#164B99]
+            bg-[linear-gradient(90deg,rgba(33,104,205,0.14)_2.48%,rgba(17,52,103,0.08)_100%)]
+            px-4
+            py-2
+            sm:mt-8
+            sm:px-5
+            sm:py-2.5
+            xl:mt-10
+            xl:px-6
+            xl:py-3
+          ">
+          <h1
+            className="
+              font-['Mukta',sans-serif]
+              text-lg
+              font-bold
+              leading-tight
+              tracking-[0.002em]
+              text-[#164B99]
+              sm:text-xl
+              md:text-2xl
+              xl:text-[28px]
+            ">
             {categoryName || 'Loading category...'}
           </h1>
         </motion.div>
 
-        <div className="flex w-full flex-col gap-20">
+        {/* NEWS AREA */}
+
+        <div className="mt-8 flex w-full flex-col gap-8 sm:mt-10 sm:gap-10 md:mt-12 xl:mt-14 xl:gap-12">
           {/* LOADING */}
 
           {loading &&
             [0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="grid grid-cols-1 gap-4 py-6 sm:gap-6 md:grid-cols-[504fr_989fr]">
-                <Skeleton className="aspect-[504/400] w-full rounded-none" />
+                className="grid grid-cols-1 gap-5 border-b border-[#E1E4E8] py-6 sm:gap-6 sm:py-8 md:grid-cols-[38%_62%] lg:gap-7">
+                <Skeleton className="aspect-[16/9] w-full rounded-none" />
 
-                <div className="flex flex-col gap-3">
-                  <Skeleton className="h-10 w-3/4" />
-
-                  <Skeleton className="h-6 w-40" />
-
-                  <Skeleton className="h-6 w-full" />
+                <div className="flex flex-col gap-3 sm:gap-4">
+                  <Skeleton className="h-7 w-3/4 sm:h-8" />
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-5 w-5/6" />
                 </div>
               </div>
             ))}
@@ -550,7 +593,9 @@ function Category() {
 
           {!loading && error && (
             <div className="flex flex-col items-center gap-4 py-16 text-center">
-              <p className="font-['Mukta',sans-serif] text-lg text-red-500">{error}</p>
+              <p className="font-['Mukta',sans-serif] text-base text-red-500 sm:text-lg">
+                {error}
+              </p>
 
               <Button type="button" variant="outline" onClick={() => navigate('/')}>
                 <ArrowLeft className="size-4" />
@@ -562,7 +607,7 @@ function Category() {
           {/* EMPTY */}
 
           {!loading && !error && news.length === 0 && (
-            <p className="py-16 text-center font-['Mukta',sans-serif] text-lg text-gray-500">
+            <p className="py-16 text-center font-['Mukta',sans-serif] text-base text-gray-500 sm:text-lg">
               No news available in this category.
             </p>
           )}
@@ -596,7 +641,11 @@ function Category() {
         </div>
       </main>
 
-      <Trending />
+      {/* TRENDING */}
+
+      <section className="mt-4 border-t border-[#E1E4E8] pt-10 sm:mt-6 sm:pt-12 xl:mt-8 xl:pt-16">
+        <Trending />
+      </section>
 
       <Footer />
     </>
