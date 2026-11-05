@@ -11,16 +11,9 @@ export default function CategoryBar({
   const navigate = useNavigate();
 
   /*
-   * First 6 categories are displayed directly
-   * on the Home page.
+   * Show ALL categories.
    */
   const visibleCategories = categories;
-
-  /*
-   * Remaining categories are available through
-   * the See All button.
-   */
-  const remainingCategories = categories.slice(6);
 
   const selectedValues =
     selectedCategory === 'All'
@@ -53,15 +46,7 @@ export default function CategoryBar({
     });
 
     /*
-     * SEE ALL
-     */
-    if (category === 'See All') {
-      navigate('/category/all');
-      return;
-    }
-
-    /*
-     * ALL
+     * ALL CATEGORIES
      */
     if (category === 'All') {
       navigate('/category/all');
@@ -69,22 +54,45 @@ export default function CategoryBar({
     }
 
     /*
-     * First 6 categories on Home.
+     * CATEGORY
      *
-     * Instead of changing the URL, tell Home
-     * which category was selected.
+     * Keep sending the complete object to the parent
+     * when onCategorySelect is provided.
      */
-    if (category?.slug) {
+    if (category?.id !== null && category?.id !== undefined) {
       if (onCategorySelect) {
         onCategorySelect(category);
         return;
       }
 
       /*
-       * Fallback if CategoryBar is used somewhere
-       * without onCategorySelect.
+       * IMPORTANT:
+       *
+       * Use category.id in the URL.
+       *
+       * Example:
+       * category = {
+       *   id: 5,
+       *   name: "Sports",
+       *   slug: "sports"
+       * }
+       *
+       * URL:
+       * /category/5
+       *
+       * Category.jsx then calls:
+       * /category/5/news
+       *
+       * Pass the category name through router state
+       * so it can be displayed even when the API returns
+       * zero news articles.
        */
-      navigate(`/category/${category.id}`);
+      navigate(`/category/${category.id}`, {
+        state: {
+          categoryName: category.name || 'Category',
+          categorySlug: category.slug || '',
+        },
+      });
     }
   };
 
@@ -117,16 +125,16 @@ export default function CategoryBar({
       <div className="w-full bg-[#F9F9FA]">
         <div
           className="
-  overflow-x-auto
-  px-0 py-3
-  sm:px-2 sm:py-3
-  md:px-4
-  lg:px-6
-  xl:px-8 xl:py-4
-  [scrollbar-width:none]
-  [-ms-overflow-style:none]
-  [&::-webkit-scrollbar]:hidden
-">
+            overflow-x-auto
+            px-0 py-3
+            sm:px-2 sm:py-3
+            md:px-4
+            lg:px-6
+            xl:px-8 xl:py-4
+            [scrollbar-width:none]
+            [-ms-overflow-style:none]
+            [&::-webkit-scrollbar]:hidden
+          ">
           <motion.ul
             variants={list}
             initial="hidden"
@@ -145,7 +153,7 @@ export default function CategoryBar({
               </motion.li>
             )}
 
-            {/* FIRST 6 CATEGORIES */}
+            {/* ALL CATEGORIES */}
             {visibleCategories.map((category) => {
               const isSelected = toValues(category).some((value) =>
                 selectedValues.includes(value),
@@ -158,7 +166,7 @@ export default function CategoryBar({
                     aria-pressed={isSelected}
                     onClick={(event) => handleSelect(event, category)}
                     className={buttonClass(isSelected)}>
-                    {category.name}
+                    {category?.name || 'Category'}
                   </Button>
                 </motion.li>
               );

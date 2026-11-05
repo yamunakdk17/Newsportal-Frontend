@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
@@ -325,15 +326,42 @@ function Category() {
 
   const navigate = useNavigate();
 
+  const location = useLocation();
+
   const reduce = useReducedMotion();
 
   const [searchParams, setSearchParams] = useSearchParams();
+
+  /*
+   * IMPORTANT:
+   *
+   * CategoryBar sends:
+   *
+   * navigate(`/category/${category.id}`, {
+   *   state: {
+   *     categoryName: category.name,
+   *     categorySlug: category.slug,
+   *   },
+   * });
+   *
+   * Therefore we can immediately know the real
+   * category name before the API response arrives.
+   */
+  const categoryNameFromNavigation = location.state?.categoryName || '';
 
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
 
   const [news, setNews] = useState([]);
 
-  const [categoryName, setCategoryName] = useState('');
+  /*
+   * NEVER use:
+   *
+   * `Category ${categoryId}`
+   *
+   * The category ID is only for the API.
+   * The UI should show the real category name.
+   */
+  const [categoryName, setCategoryName] = useState(categoryNameFromNavigation);
 
   const [totalPages, setTotalPages] = useState(1);
 
@@ -348,24 +376,42 @@ function Category() {
   useEffect(() => {
     if (!categoryId) {
       setNews([]);
+      setCategoryName(categoryNameFromNavigation);
       setLoading(false);
       setError('Category not found.');
       return;
     }
 
+    /*
+     * "all" is not a numeric category ID.
+     * Keep the existing route behavior.
+     */
+    if (categoryId === 'all') {
+      setCategoryName(categoryNameFromNavigation || 'All News');
+      setNews([]);
+      setLoading(false);
+      setError('');
+      return;
+    }
+
     const cacheKey = `${categoryId}-${page}`;
+
     const cached = categoryNewsCache.get(cacheKey);
 
     if (cached && Date.now() - cached.savedAt < CATEGORY_CACHE_TTL) {
       setNews(cached.news);
-      setCategoryName(cached.categoryName);
+
+      setCategoryName(cached.categoryName || categoryNameFromNavigation || '');
+
       setTotalPages(cached.totalPages);
       setError('');
       setLoading(false);
+
       return;
     }
 
     const controller = new AbortController();
+
     let active = true;
 
     const fetchNews = async () => {
@@ -375,6 +421,17 @@ function Category() {
         setLoading(true);
         setError('');
 
+        /*
+         * CATEGORY ID IS USED ONLY HERE.
+         *
+         * Example:
+         *
+         * categoryId = 22
+         *
+         * API:
+         *
+         * /category/22/news
+         */
         const response = await api.get(`/category/${categoryId}/news`, {
           params: {
             page,
@@ -395,7 +452,18 @@ function Category() {
 
         const newsData = Array.isArray(response.data.data) ? response.data.data : [];
 
-        const name = newsData[0]?.category?.name || `Category ${categoryId}`;
+        /*
+         * Priority:
+         *
+         * 1. Name returned by backend
+         * 2. Name passed from CategoryBar
+         * 3. Empty string
+         *
+         * NEVER:
+         *
+         * Category 22
+         */
+        const name = newsData[0]?.category?.name || categoryNameFromNavigation || '';
 
         const lastPage = Number(
           response.data.meta?.last_page || response.data.last_page || 1,
@@ -408,7 +476,9 @@ function Category() {
           savedAt: Date.now(),
         };
 
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
         categoryNewsCache.set(cacheKey, result);
 
@@ -417,8 +487,8 @@ function Category() {
         setTotalPages(result.totalPages);
       } catch (requestError) {
         if (
-          requestError.name === 'CanceledError' ||
-          requestError.code === 'ERR_CANCELED' ||
+          requestError?.name === 'CanceledError' ||
+          requestError?.code === 'ERR_CANCELED' ||
           controller.signal.aborted
         ) {
           return;
@@ -426,14 +496,16 @@ function Category() {
 
         console.error(
           'Unable to load category news:',
-          requestError.response?.data || requestError,
+          requestError?.response?.data || requestError,
         );
 
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
         setError(
-          requestError.response?.data?.message ||
-            requestError.message ||
+          requestError?.response?.data?.message ||
+            requestError?.message ||
             'Unable to load news.',
         );
 
@@ -451,7 +523,7 @@ function Category() {
       active = false;
       controller.abort();
     };
-  }, [categoryId, page]);
+  }, [categoryId, page, categoryNameFromNavigation]);
 
   /* =====================================================
      CHANGE PAGE
@@ -608,7 +680,11 @@ function Category() {
 
           {!loading && !error && news.length === 0 && (
             <p className="py-16 text-center font-['Mukta',sans-serif] text-base text-gray-500 sm:text-lg">
-              No news available in this category.
+              No news available in{' '}
+              <span className="font-semibold text-[#16181A]">
+                {categoryName || 'this category'}
+              </span>
+              .
             </p>
           )}
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { ChevronDown, Image as ImageIcon, LoaderCircle, X } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
@@ -31,13 +31,9 @@ function AdminNewsForm({
   setIsFeatured,
 
   images,
-  setImages,
   featuredImage,
-  setFeaturedImage,
   imagePreviews,
-  setImagePreviews,
   featuredPreview,
-  setFeaturedPreview,
 
   formErrors,
   setFormErrors,
@@ -73,41 +69,8 @@ function AdminNewsForm({
   const REMOVE =
     'absolute bottom-2 right-2 flex size-7 items-center justify-center rounded-full bg-white text-slate-700 shadow-md outline-none transition hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-[#2168CD] disabled:opacity-60';
 
-  useEffect(() => {
-    return () => {
-      imagePreviews.forEach((preview) => {
-        if (preview?.url) {
-          URL.revokeObjectURL(preview.url);
-        }
-      });
-
-      if (featuredPreview) {
-        URL.revokeObjectURL(featuredPreview);
-      }
-    };
-  }, []);
-
-  const handleRemoveImage = (index) => {
-    const preview = imagePreviews[index];
-
-    if (preview?.url) {
-      URL.revokeObjectURL(preview.url);
-    }
-
-    setImages((current) => current.filter((_, imageIndex) => imageIndex !== index));
-
-    setImagePreviews((current) =>
-      current.filter((_, imageIndex) => imageIndex !== index),
-    );
-  };
-
   const handleRemoveFeaturedImage = () => {
-    if (featuredPreview) {
-      URL.revokeObjectURL(featuredPreview);
-    }
-
-    setFeaturedImage(null);
-    setFeaturedPreview('');
+    removeFeaturedImage();
 
     if (featuredInputRef.current) {
       featuredInputRef.current.value = '';
@@ -425,7 +388,7 @@ function AdminNewsForm({
 
                         <button
                           type="button"
-                          onClick={() => handleRemoveImage(index)}
+                          onClick={() => removeImage(index)}
                           disabled={saving}
                           className={REMOVE}
                           aria-label={`Remove image ${index + 1}`}>

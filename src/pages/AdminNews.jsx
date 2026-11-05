@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Plus,
   Search,
@@ -56,14 +56,14 @@ function AdminNews() {
   const [imagePreviews, setImagePreviews] = useState([]);
   const [featuredPreview, setFeaturedPreview] = useState('');
 
-  const showErrorNotification = (message) => {
+  const showErrorNotification = useCallback((message) => {
     setError(message);
     setSuccess('');
 
     window.setTimeout(() => {
       setError((current) => (current === message ? '' : current));
     }, 3500);
-  };
+  }, []);
 
   const showSuccessNotification = (message) => {
     setSuccess(message);
@@ -119,10 +119,8 @@ function AdminNews() {
     return `${baseUrl}/storage/${String(imagePath).replace(/^\/+/, '')}`;
   };
 
-  const fetchNews = async () => {
+  const fetchNews = useCallback(async () => {
     try {
-      setLoading(true);
-
       const response = await api.get('/admin/posts', {
         params: {
           page: 1,
@@ -157,12 +155,10 @@ function AdminNews() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showErrorNotification]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
-      setCategoriesLoading(true);
-
       const response = await api.get('/admin/categories', {
         params: {
           page: 1,
@@ -197,12 +193,12 @@ function AdminNews() {
     } finally {
       setCategoriesLoading(false);
     }
-  };
+  }, [showErrorNotification]);
 
   useEffect(() => {
-    fetchNews();
-    fetchCategories();
-  }, []);
+    Promise.resolve().then(fetchNews);
+    Promise.resolve().then(fetchCategories);
+  }, [fetchNews, fetchCategories]);
 
   const resetForm = () => {
     imagePreviews.forEach((preview) => {
@@ -389,6 +385,7 @@ function AdminNews() {
       setSearch('');
 
       // Reload news list
+      setLoading(true);
       await fetchNews();
 
       // Show success message
@@ -440,6 +437,7 @@ function AdminNews() {
 
       showSuccessNotification(message);
 
+      setLoading(true);
       await fetchNews();
     } catch (error) {
       console.error('Update news error:', error);
@@ -780,6 +778,8 @@ function AdminNews() {
                 <button
                   type="button"
                   onClick={() => {
+                    setLoading(true);
+                    setCategoriesLoading(true);
                     fetchNews();
                     fetchCategories();
                   }}

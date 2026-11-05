@@ -47,9 +47,6 @@ export default function Categories() {
 
   const loadCategories = async () => {
     try {
-      setLoading(true);
-      setPageError('');
-
       const response = await api.get('/admin/categories');
 
       console.log('Categories backend response:', response.data);
@@ -73,7 +70,7 @@ export default function Categories() {
   };
 
   useEffect(() => {
-    loadCategories();
+    Promise.resolve().then(loadCategories);
   }, []);
 
   useEffect(() => {
@@ -85,14 +82,6 @@ export default function Categories() {
 
     return () => clearTimeout(timer);
   }, [success]);
-
-  const startCreate = () => {
-    setEditingCategory(null);
-    setName('');
-    setFieldError('');
-    setPageError('');
-    setSuccess('');
-  };
 
   const startEdit = (category) => {
     setEditingCategory(category);

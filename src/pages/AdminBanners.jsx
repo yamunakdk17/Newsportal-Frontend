@@ -42,9 +42,6 @@ export default function Banners() {
 
   const loadBanners = async () => {
     try {
-      setLoading(true);
-      setPageError('');
-
       const response = await api.get('/admin/banners');
 
       console.log('Banners response:', response.data);
@@ -64,7 +61,7 @@ export default function Banners() {
   };
 
   useEffect(() => {
-    loadBanners();
+    Promise.resolve().then(loadBanners);
   }, []);
 
   const handleFileChange = (event) => {
@@ -133,6 +130,7 @@ export default function Banners() {
     try {
       setSaving(true);
       setErrors({});
+      setPageError('');
 
       const response = await api.post('/admin/banners', data);
 
@@ -140,6 +138,7 @@ export default function Banners() {
 
       resetForm();
 
+      setLoading(true);
       await loadBanners();
     } catch (error) {
       console.error('Create banner error:', error);

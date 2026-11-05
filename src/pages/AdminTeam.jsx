@@ -52,13 +52,9 @@ export default function Team() {
 
   const fetchMembers = async ({ showLoader = true } = {}) => {
     try {
-      if (showLoader) {
-        setLoading(true);
-      } else {
+      if (!showLoader) {
         setRefreshing(true);
       }
-
-      setError('');
 
       const response = await api.get('/admin/admins');
 
@@ -80,7 +76,7 @@ export default function Team() {
   };
 
   useEffect(() => {
-    fetchMembers();
+    Promise.resolve().then(() => fetchMembers());
   }, []);
 
   const openCreateModal = () => {
@@ -286,11 +282,12 @@ export default function Team() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() =>
+                  onClick={() => {
+                    setError('');
                     fetchMembers({
                       showLoader: false,
-                    })
-                  }
+                    });
+                  }}
                   disabled={refreshing}
                   aria-label="Refresh team members"
                   className="h-9 rounded-xl border-[#D8DBDF] bg-white px-3 text-[#4A4E54] shadow-none hover:bg-slate-50">

@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 import {
   FileText,
   LayoutGrid,
   Users,
   ImageIcon,
-  LogOut,
   ShieldCheck,
   Menu,
   X,
@@ -15,7 +14,6 @@ import {
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import Logout from '@/components/layout/Logout';
 
 export const NAV_ITEMS = [
@@ -63,8 +61,6 @@ export function isSuperAdmin() {
 }
 
 export default function AdminSidebar({ user, onNavigate }) {
-  const navigate = useNavigate();
-
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const storedAdmin = getStoredAdmin();
@@ -98,18 +94,6 @@ export default function AdminSidebar({ user, onNavigate }) {
       document.body.style.overflow = '';
     };
   }, [mobileMenuOpen]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('tokenType');
-    localStorage.removeItem('adminUser');
-
-    setMobileMenuOpen(false);
-
-    onNavigate?.();
-
-    navigate('/login');
-  };
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
@@ -145,6 +129,11 @@ export default function AdminSidebar({ user, onNavigate }) {
         )}
       </NavLink>
     );
+  };
+
+  const handleLogoutComplete = () => {
+    setMobileMenuOpen(false);
+    onNavigate?.();
   };
 
   return (
@@ -232,19 +221,14 @@ export default function AdminSidebar({ user, onNavigate }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold 2xl:text-sm">{userName}</p>
 
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleLogout}
+              <div
                 className="
-                  mt-1 h-auto w-fit gap-1 p-0
+                  mt-1 w-fit
                   text-[11px] font-medium text-white/75
-                  hover:bg-transparent hover:text-white
                   2xl:text-xs
                 ">
-                <LogOut className="size-3.5 2xl:size-4" />
-                Log out
-              </Button>
+                <Logout onLogout={handleLogoutComplete} />
+              </div>
             </div>
           </div>
         </div>
@@ -399,9 +383,7 @@ export default function AdminSidebar({ user, onNavigate }) {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleLogout}
+          <div
             className="
               mt-4 flex w-full
               items-center justify-center
@@ -413,8 +395,8 @@ export default function AdminSidebar({ user, onNavigate }) {
               transition hover:bg-white/20
               active:scale-[0.98]
             ">
-            <Logout />
-          </button>
+            <Logout onLogout={handleLogoutComplete} />
+          </div>
         </div>
       </aside>
     </>
