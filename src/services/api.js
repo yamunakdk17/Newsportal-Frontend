@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { clearAccessToken, getAccessToken, setAccessToken } from '@/auth/tokenStore';
+import { clearAccessToken, getAccessToken, setAccessToken } from '@/components/auth/tokenStore';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,

@@ -1,6 +1,6 @@
 import api from '@/services/api';
 
-import { clearAccessToken, setAccessToken } from '@/auth/tokenStore';
+import { clearAccessToken, setAccessToken } from '@/components/auth/tokenStore';
 
 /**
  * Login admin.

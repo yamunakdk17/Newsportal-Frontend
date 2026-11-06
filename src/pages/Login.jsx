@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 
-import api from '@/services/api';
+import { login } from '@/components/auth/auth';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email'),
@@ -33,33 +33,17 @@ function Login() {
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
 
   const onSubmit = async (data) => {
     try {
-      const response = await api.post('/admin/login', {
-        email: data.email,
-        password: data.password,
-      });
+      const user = await login(data.email, data.password);
 
-      console.log('Login response:', response.data);
-
-      if (!response.data?.success) {
-        setError('root', {
-          message: response.data?.message || 'Login failed',
-        });
-
-        return;
-      }
-
-      const loginData = response.data?.data;
-
-      const token = loginData?.token;
-      const tokenType = loginData?.token_type;
-      const user = loginData?.user;
-
-      // Make sure backend returned everything required
-      if (!token || !user) {
+      if (!user) {
         setError('root', {
           message: 'Invalid login response from server.',
         });
@@ -67,27 +51,47 @@ function Login() {
         return;
       }
 
-      // Save authentication token
-      localStorage.setItem('adminToken', token);
-
-      // Save token type
-      localStorage.setItem('tokenType', tokenType || 'Bearer');
-
-      // Save logged-in user
+      /*
+       * These values are only for displaying the logged-in
+       * admin information in the existing UI.
+       *
+       * IMPORTANT:
+       * No access token or refresh token is stored here.
+       */
       localStorage.setItem('adminUser', JSON.stringify(user));
 
-      // Save role separately
       localStorage.setItem('adminRole', user.role || '');
 
       console.log('Logged-in user:', user);
       console.log('Logged-in role:', user.role);
 
-      // Go to admin dashboard
-      navigate('/admin/categories');
+      navigate('/admin/categories', {
+        replace: true,
+      });
     } catch (error) {
       console.error('Login error:', error);
 
-      const message = error.response?.data?.message || 'Unable to connect to the server.';
+      const status = error.response?.status;
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        'Unable to connect to the server.';
+
+      if (status === 401) {
+        setError('root', {
+          message: message || 'Invalid email or password.',
+        });
+
+        return;
+      }
+
+      if (status === 429) {
+        setError('root', {
+          message: 'Too many login attempts. Please wait and try again.',
+        });
+
+        return;
+      }
 
       setError('root', {
         message,
