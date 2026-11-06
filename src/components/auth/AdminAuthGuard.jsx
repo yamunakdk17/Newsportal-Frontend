@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
 import { restoreSession } from '@/components/auth/auth';
+import { getAccessToken } from '@/components/auth/tokenStore';
 
 function AdminAuthGuard() {
   const [status, setStatus] = useState('checking');
@@ -10,6 +11,12 @@ function AdminAuthGuard() {
     let mounted = true;
 
     const checkSession = async () => {
+      if (getAccessToken()) {
+        setStatus('authenticated');
+
+        return;
+      }
+
       try {
         const user = await restoreSession();
 

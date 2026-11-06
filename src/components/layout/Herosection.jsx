@@ -65,7 +65,7 @@ export default function HeroBanner({ onSelect, isLoading = false }) {
         const response = await api.get('/news', {
           params: {
             page: 1,
-            per_page: 50,
+            per_page: 8,
           },
         });
 

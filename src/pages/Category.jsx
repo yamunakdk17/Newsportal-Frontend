@@ -23,7 +23,7 @@ import {
   PaginationLink,
 } from '@/components/ui/pagination';
 
-const PER_PAGE = 6;
+const PER_PAGE = 10;
 
 // Cache each category/page response for 60 seconds.
 const categoryNewsCache = new Map();

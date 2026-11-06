@@ -2,46 +2,38 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 
-import api from '@/services/api';
+import { logout } from '@/components/auth/auth';
 
 export default function Logout({ onLogout }) {
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    if (loggingOut) return;
+    if (loggingOut) {
+      return;
+    }
 
     setLoggingOut(true);
 
+    console.log('[AUTH] 🚪 Logout clicked');
+
     try {
-      const token = localStorage.getItem('adminToken');
+      await logout();
 
-      console.log('Logout clicked');
-      console.log('Token exists:', !!token);
-      console.log('Logout endpoint:', `${api.defaults.baseURL}/admin/logout`);
-
-      /*
-       * The Axios request interceptor automatically adds:
-       *
-       * Authorization: Bearer <adminToken>
-       */
-      const response = await api.post('/admin/logout');
-
-      console.log('Logout successful');
-      console.log('Status:', response.status);
-      console.log('Response:', response.data);
+      console.log('[AUTH] ✅ Logout completed');
     } catch (error) {
-      console.error('Logout API failed:', error);
-      console.error('Status:', error.response?.status);
-      console.error('Response:', error.response?.data);
-      console.error('URL:', error.config?.url);
+      console.error('[AUTH] ❌ Logout API failed:', error);
+
+      console.error('[AUTH] Status:', error.response?.status);
+
+      console.error('[AUTH] Response:', error.response?.data);
     } finally {
       /*
-       * Clear frontend authentication regardless of
-       * whether the backend logout request succeeds.
+       * Access token is cleared from memory
+       * inside auth.js.
+       *
+       * These are only UI/session metadata.
        */
-      localStorage.removeItem('adminToken');
-      localStorage.removeItem('tokenType');
       localStorage.removeItem('adminUser');
       localStorage.removeItem('adminRole');
 

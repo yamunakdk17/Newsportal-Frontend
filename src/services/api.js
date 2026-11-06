@@ -1,176 +1,206 @@
 import axios from 'axios';
 
-import { clearAccessToken, getAccessToken, setAccessToken } from '@/components/auth/tokenStore';
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from '@/components/auth/tokenStore';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
-  headers: {
-    Accept: 'application/json',
-  },
 });
 
-/*
-| Refresh state
-|
-| Only one refresh request is allowed at a time.
-| If several API requests receive 401 simultaneously,
-| they all wait for this same Promise.
-|
-*/
 let refreshPromise = null;
 
-/*
-| Request interceptor
-|
-| Attach the current access token to protected requests.
-|
-*/
+/**
+ * Refresh the access token.
+ *
+ * The refresh token is NOT manually provided here.
+ * Laravel receives it automatically through the HttpOnly cookie.
+ */
+async function refreshAccessToken() {
+  console.log('[AUTH] 🔄 Refresh process started');
+
+  if (!refreshPromise) {
+    console.log('[AUTH] Creating new refresh request');
+
+    refreshPromise = api
+      .post('/admin/refresh', null, {
+        skipAuthRefresh: true,
+      })
+      .then((response) => {
+        console.log('[AUTH] ✅ Refresh response status:', response.status);
+
+        const data = response.data?.data;
+
+        if (!data?.token) {
+          console.error('[AUTH] ❌ Refresh succeeded but no access token was returned');
+
+          throw new Error('Refresh succeeded but no access token was returned.');
+        }
+
+        setAccessToken(data.token);
+
+        console.log('[AUTH] ✅ New access token stored in memory');
+
+        return data.token;
+      })
+      .catch((error) => {
+        console.error('[AUTH] ❌ Refresh request failed');
+
+        console.error('[AUTH] Refresh status:', error.response?.status);
+
+        console.error('[AUTH] Refresh response:', error.response?.data);
+
+        throw error;
+      })
+      .finally(() => {
+        console.log('[AUTH] Refresh request finished');
+
+        refreshPromise = null;
+      });
+  } else {
+    console.log('[AUTH] ⏳ Refresh already running — reusing existing request');
+  }
+
+  return refreshPromise;
+}
+
+/**
+ * Attach access token to protected requests.
+ */
 api.interceptors.request.use(
   (config) => {
     const token = getAccessToken();
+
+    console.log(
+      '[API] ➡️',
+      config.method?.toUpperCase(),
+      config.url,
+      '| Access token:',
+      token ? 'present' : 'missing',
+    );
 
     if (token) {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    /*
+    /**
      * Let Axios/browser create the correct multipart boundary
      * when sending FormData.
      */
     if (config.data instanceof FormData) {
-      delete config.headers['Content-Type'];
+      delete config.headers?.['Content-Type'];
     }
 
     return config;
   },
-  (error) => Promise.reject(error),
+  (error) => {
+    console.error('[API] ❌ Request interceptor error:', error);
+
+    return Promise.reject(error);
+  },
 );
 
-/*
-| Refresh access token
-|
-| The refresh token is NOT manually sent.
-|
-| Laravel receives it automatically from the HttpOnly cookie
-| because withCredentials: true is enabled.
-|
-*/
-async function refreshAccessToken() {
-  if (!refreshPromise) {
-    refreshPromise = api
-      .post('/admin/refresh', null, {
-        /*
-         * Explicitly keep credentials enabled for the refresh
-         * request.
-         */
-        withCredentials: true,
+/**
+ * Handle successful responses.
+ */
+// api.interceptors.response.use(
+//   (response) => {
+//     console.log(
+//       '[API] ✅',
+//       response.config.method?.toUpperCase(),
+//       response.config.url,
+//       '| Status:',
+//       response.status,
+//     );
 
-        /*
-         * Prevent the 401 interceptor from trying to refresh
-         * the refresh request itself.
-         */
-        skipAuthRefresh: true,
-      })
-      .then((response) => {
-        const token = response.data?.data?.token;
+//     return response;
+//   },
 
-        if (!token) {
-          throw new Error('Refresh succeeded but no access token was returned.');
-        }
+//   /**
+//    * Handle failed responses.
+//    */
+//   async (error) => {
+//     const originalRequest = error.config;
 
-        setAccessToken(token);
+//     console.error(
+//       '[API] ❌',
+//       originalRequest?.method?.toUpperCase(),
+//       originalRequest?.url,
+//       '| Status:',
+//       error.response?.status,
+//     );
 
-        return token;
-      })
-      .catch((error) => {
-        clearAccessToken();
+//     /**
+//      * Do not refresh when:
+//      *
+//      * 1. The error isn't 401.
+//      * 2. The request explicitly disables refresh handling.
+//      * 3. This request has already been retried.
+//      */
+//     if (
+//       error.response?.status !== 401 ||
+//       originalRequest?.skipAuthRefresh ||
+//       originalRequest?._retry
+//     ) {
+//       console.log('[AUTH] No refresh attempted for this error');
 
-        throw error;
-      })
-      .finally(() => {
-        refreshPromise = null;
-      });
-  }
+//       return Promise.reject(error);
+//     }
 
-  return refreshPromise;
-}
+//     console.log('[AUTH] ⚠️ Access token rejected with 401');
 
-/*
-| Response interceptor
-|
-| If a protected request gets 401:
-|
-| 1. Refresh the access token once.
-| 2. Save the new token in memory.
-| 3. Retry the original request once.
-|
-*/
+//     originalRequest._retry = true;
+
+//     try {
+//       const newAccessToken = await refreshAccessToken();
+
+//       console.log('[AUTH] 🔁 Retrying original request:', originalRequest.url);
+
+//       originalRequest.headers = originalRequest.headers || {};
+
+//       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+//       return api(originalRequest);
+//     } catch (refreshError) {
+//       console.error('[AUTH] ❌ Could not refresh session');
+
+//       clearAccessToken();
+
+//       console.log('[AUTH] 🗑️ Access token cleared from memory');
+
+//       return Promise.reject(refreshError);
+//     }
+//   },
+// );
+
 api.interceptors.response.use(
   (response) => response,
-
   async (error) => {
     const originalRequest = error.config;
 
-    const status = error.response?.status;
-
-    /*
-     * No response means network/server connection problem.
-     */
-    if (!error.response) {
-      return Promise.reject(error);
-    }
-
-    /*
-     * Never try to refresh the refresh request itself.
-     */
-    if (originalRequest?.skipAuthRefresh) {
-      return Promise.reject(error);
-    }
-
-    /*
-     * Only handle 401 responses.
-     *
-     * 403, 429 and 5xx are passed to the calling component.
-     */
-    if (status !== 401) {
-      return Promise.reject(error);
-    }
-
-    /*
-     * Retry each original request only once.
-     */
-    if (originalRequest._retry) {
-      clearAccessToken();
-
+    if (
+      error.response?.status !== 401 ||
+      !originalRequest ||
+      originalRequest.skipAuthRefresh ||
+      originalRequest._retry
+    ) {
       return Promise.reject(error);
     }
 
     originalRequest._retry = true;
 
     try {
-      /*
-       * If another request is already refreshing,
-       * this request waits for the same refresh Promise.
-       */
-      const newToken = await refreshAccessToken();
+      const newAccessToken = await refreshAccessToken();
 
       originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
-      originalRequest.headers.Authorization = `Bearer ${newToken}`;
-
-      /*
-       * Retry the original request once.
-       */
       return api(originalRequest);
     } catch (refreshError) {
-      /*
-       * Refresh failed.
-       *
-       * The refresh cookie is expired, revoked, invalid,
-       * or the backend rejected the request.
-       */
       clearAccessToken();
 
       return Promise.reject(refreshError);

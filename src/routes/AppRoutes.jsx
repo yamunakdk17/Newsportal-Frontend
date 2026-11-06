@@ -23,15 +23,15 @@ export default function AppRoutes() {
 
       <Route path="/login" element={<Login />} />
 
-      {/* <Route element={<AdminAuthGuard />}> */}
-      <Route path="/admin/news" element={<AdminNews />} />
+      <Route element={<AdminAuthGuard />}>
+        <Route path="/admin/news" element={<AdminNews />} />
 
-      <Route path="/admin/categories" element={<AdminCategories />} />
+        <Route path="/admin/categories" element={<AdminCategories />} />
 
-      <Route path="/admin/banners" element={<AdminBanners />} />
+        <Route path="/admin/banners" element={<AdminBanners />} />
 
-      <Route path="/admin/team" element={<AdminTeam />} />
-      {/* </Route> */}
+        <Route path="/admin/team" element={<AdminTeam />} />
+      </Route>
     </Routes>
   );
 }
