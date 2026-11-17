@@ -72,14 +72,10 @@ function Login() {
       console.error('Login error:', error);
 
       const status = error.response?.status;
-      const message =
-        error.response?.data?.message ||
-        error.message ||
-        'Unable to connect to the server.';
 
       if (status === 401) {
         setError('root', {
-          message: message || 'Invalid email or password.',
+          message: 'Invalid email or password.',
         });
 
         return;
@@ -92,10 +88,6 @@ function Login() {
 
         return;
       }
-
-      setError('root', {
-        message,
-      });
     }
   };
 

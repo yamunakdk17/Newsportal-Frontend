@@ -4,7 +4,8 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
-import { getNewsImageUrl, getNewsList, isPublishedNews } from '@/lib/news';
+import { getNewsList, isPublishedNews } from '@/lib/news';
+import { getImageUrl } from '@/lib/getImageUrl';
 
 /*
  * News title styling
@@ -92,8 +93,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   /*
    * Backend image URL
    */
-  const getImageUrl = (item) =>
-    getNewsImageUrl(item?.featured_image || item?.images?.[0]);
+  const getImageurl = (item) => getImageUrl(item?.featured_image || item?.images?.[0]);
 
   /*
    * Animation
@@ -171,7 +171,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           story={left}
           ratio={402 / 386}
           variants={item}
-          getImageUrl={getImageUrl}
+          getImageUrl={getImageurl}
           onSelect={onSelect}
           className="md:col-start-1 md:row-start-2 lg:col-start-1 lg:row-start-1 lg:px-5 lg:pr-5"
         />
@@ -182,7 +182,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
         story={main}
         ratio={828 / 532}
         variants={item}
-        getImageUrl={getImageUrl}
+        getImageUrl={getImageurl}
         onSelect={onSelect}
         className="order-first md:order-none md:col-span-2 md:col-start-1 md:row-start-1 lg:col-span-1 lg:col-start-2 lg:px-5"
       />
@@ -193,7 +193,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           story={right}
           ratio={402 / 386}
           variants={item}
-          getImageUrl={getImageUrl}
+          getImageUrl={getImageurl}
           onSelect={onSelect}
           className="md:col-start-2 md:row-start-2 lg:col-start-3 lg:row-start-1 lg:px-5 lg:pl-5"
         />

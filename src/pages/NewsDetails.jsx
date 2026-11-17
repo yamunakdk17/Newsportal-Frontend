@@ -262,7 +262,7 @@ function NewsDetails() {
                   <span>{formatDate(article.published_at)}</span>
                 </motion.div>
 
-                <div className="flex w-full flex-col items-start gap-4 sm:gap-5">
+                <div className="flex w-full max-w-[1200px] flex-col items-start gap-4 sm:gap-5">
                   {/* Featured Image */}
                   {image && (
                     <motion.div {...fadeUp(0.15)} className="w-full">
@@ -309,7 +309,7 @@ function NewsDetails() {
                   {/* Title */}
                   <motion.h1
                     {...fadeUp(0.2)}
-                    className="w-full text-center text-xl font-bold leading-[1.35] tracking-[-0.01em] text-[#16181A] sm:text-2xl md:text-3xl lg:text-4xl xl:text-[40px] xl:leading-[1.25]">
+                    className="w-full text-left text-xl font-bold leading-[1.35] tracking-[-0.01em] text-[#16181A] sm:text-2xl md:text-3xl lg:text-4xl xl:text-[40px] xl:leading-[1.25]">
                     {article.title}
                   </motion.h1>
 
@@ -330,12 +330,13 @@ function NewsDetails() {
               {paragraphs.length > 0 && (
                 <motion.div
                   {...fadeUp(0.3)}
-                  className="flex w-full justify-center px-4 pt-0 pb-3 sm:px-6 sm:pt-1 sm:pb-4 md:px-10 lg:px-16 lg:pt-1 lg:pb-5 xl:px-[180px] xl:pt-1 xl:pb-6">
+                  className="flex w-full justify-center pt-0 pb-3 sm:pt-1 sm:pb-4 lg:pt-1 lg:pb-5 xl:pt-1 xl:pb-6">
                   <div className="flex w-full max-w-[1200px] flex-col gap-4 sm:gap-5 lg:gap-6">
                     {paragraphs.map((text, index) => (
                       <p
                         key={index}
-                        className="w-full text-base font-normal leading-[1.75] tracking-normal text-[#333333] sm:text-[17px] md:text-lg lg:text-lg xl:text-[19px]">
+                        className="w-full text-left
+                        text-base font-normal leading-[1.75] tracking-normal text-[#333333] sm:text-[17px] md:text-lg lg:text-lg xl:text-[19px]">
                         {text}
                       </p>
                     ))}

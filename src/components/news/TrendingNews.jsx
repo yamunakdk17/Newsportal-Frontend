@@ -5,7 +5,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
-import { getNewsImageUrl } from '@/lib/news';
+import { getImageUrl } from '@/lib/getImageUrl';
 
 /**
  * Backend:
@@ -159,8 +159,7 @@ export default function Trending({ title = 'Trending News', onSelect }) {
   /*
    * Backend image URL.
    */
-  const getImageUrl = (item) =>
-    getNewsImageUrl(item?.featured_image || item?.images?.[0]);
+  const getImageurl = (item) => getImageUrl(item?.featured_image || item?.images?.[0]);
 
   /*
    * Navigate to news details.
@@ -212,7 +211,7 @@ export default function Trending({ title = 'Trending News', onSelect }) {
   return (
     <section
       aria-labelledby="trending-heading"
-      className="mx-auto flex w-full max-w-[1926px] flex-col items-start gap-6 px-4 sm:px-6 md:px-10 lg:px-16 xl:gap-8 xl:px-[120px]">
+      className="mx-auto flex w-full max-w-[1926px] flex-col items-start gap-6 py-10 px-4 sm:gap-7 sm:py-12 sm:px-6 md:px-10 lg:px-16 xl:gap-8 xl:py-16 xl:px-[120px]">
       <h2
         id="trending-heading"
         className="font-['Mukta',sans-serif] text-2xl font-bold leading-[1.2] tracking-[0.002em] text-[#16181A] sm:text-3xl md:text-4xl 2xl:text-[40px] 2xl:leading-[48px]">
@@ -244,7 +243,7 @@ export default function Trending({ title = 'Trending News', onSelect }) {
               key={story.id || story.slug}
               story={story}
               variants={item}
-              getImageUrl={getImageUrl}
+              getImageUrl={getImageurl}
               onSelect={handleSelect}
             />
           ))}

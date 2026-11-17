@@ -5,7 +5,8 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
-import { getNewsImageUrl, getNewsList, isPublishedNews } from '@/lib/news';
+import { getNewsList, isPublishedNews } from '@/lib/news';
+import { getImageUrl } from '@/lib/getImageUrl';
 
 export default function HeroBanner({ onSelect, isLoading = false }) {
   const reduce = useReducedMotion();
@@ -122,7 +123,7 @@ export default function HeroBanner({ onSelect, isLoading = false }) {
     );
   }
 
-  const image = getNewsImageUrl(heroNews.featured_image);
+  const image = getImageUrl(heroNews.featured_image);
 
   const title = heroNews.title || 'Latest News';
 

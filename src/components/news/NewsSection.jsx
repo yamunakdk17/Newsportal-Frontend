@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import api from '@/services/api';
-import { getNewsImageUrl, getNewsList, isPublishedNews } from '@/lib/news';
+import { getNewsList, isPublishedNews } from '@/lib/news';
+import { getImageUrl } from '@/lib/getImageUrl';
 
 function NewsSection({ selectedCategory, newsData }) {
   const navigate = useNavigate();
@@ -72,8 +73,7 @@ function NewsSection({ selectedCategory, newsData }) {
     return selectedValues.some((value) => categoryValues.includes(value));
   });
 
-  const getImageUrl = (item) =>
-    getNewsImageUrl(item?.featured_image || item?.images?.[0]);
+  const getImageurl = (item) => getImageUrl(item?.featured_image || item?.images?.[0]);
 
   if (!Array.isArray(newsData) && loading) {
     return (
@@ -133,9 +133,9 @@ function NewsSection({ selectedCategory, newsData }) {
               className={`min-w-0 ${mainNews.slug ? 'cursor-pointer' : ''}`}>
               {/* LARGE IMAGE */}
               <div className="aspect-[16/9] w-full overflow-hidden bg-gray-100">
-                {getImageUrl(mainNews) ? (
+                {getImageurl(mainNews) ? (
                   <img
-                    src={getImageUrl(mainNews)}
+                    src={getImageurl(mainNews)}
                     alt={mainNews.title}
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
@@ -172,9 +172,9 @@ function NewsSection({ selectedCategory, newsData }) {
                   } ${index !== sideNews.length - 1 ? 'border-b border-gray-300' : ''}`}>
                   {/* SMALL IMAGE */}
                   <div className="aspect-[194/150] w-full overflow-hidden bg-gray-100">
-                    {getImageUrl(item) ? (
+                    {getImageurl(item) ? (
                       <img
-                        src={getImageUrl(item)}
+                        src={getImageurl(item)}
                         alt={item.title}
                         loading="lazy"
                         className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"

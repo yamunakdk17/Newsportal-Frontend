@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import HeroBanner from '@/components/layout/HeroSection';
+import HeroBanner from '@/components/layout/Herosection';
 
 import CategoryBar from '@/components/category/CategoryCard';
 import NewsSection from '@/components/news/NewsSection';

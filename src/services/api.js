@@ -107,75 +107,75 @@ api.interceptors.request.use(
 /**
  * Handle successful responses.
  */
-// api.interceptors.response.use(
-//   (response) => {
-//     console.log(
-//       '[API] ✅',
-//       response.config.method?.toUpperCase(),
-//       response.config.url,
-//       '| Status:',
-//       response.status,
-//     );
+api.interceptors.response.use(
+  (response) => {
+    console.log(
+      '[API] ✅',
+      response.config.method?.toUpperCase(),
+      response.config.url,
+      '| Status:',
+      response.status,
+    );
 
-//     return response;
-//   },
+    return response;
+  },
 
-//   /**
-//    * Handle failed responses.
-//    */
-//   async (error) => {
-//     const originalRequest = error.config;
+  /**
+   * Handle failed responses.
+   */
+  async (error) => {
+    const originalRequest = error.config;
 
-//     console.error(
-//       '[API] ❌',
-//       originalRequest?.method?.toUpperCase(),
-//       originalRequest?.url,
-//       '| Status:',
-//       error.response?.status,
-//     );
+    console.error(
+      '[API] ❌',
+      originalRequest?.method?.toUpperCase(),
+      originalRequest?.url,
+      '| Status:',
+      error.response?.status,
+    );
 
-//     /**
-//      * Do not refresh when:
-//      *
-//      * 1. The error isn't 401.
-//      * 2. The request explicitly disables refresh handling.
-//      * 3. This request has already been retried.
-//      */
-//     if (
-//       error.response?.status !== 401 ||
-//       originalRequest?.skipAuthRefresh ||
-//       originalRequest?._retry
-//     ) {
-//       console.log('[AUTH] No refresh attempted for this error');
+    /**
+     * Do not refresh when:
+     *
+     * 1. The error isn't 401.
+     * 2. The request explicitly disables refresh handling.
+     * 3. This request has already been retried.
+     */
+    if (
+      error.response?.status !== 401 ||
+      originalRequest?.skipAuthRefresh ||
+      originalRequest?._retry
+    ) {
+      console.log('[AUTH] No refresh attempted for this error');
 
-//       return Promise.reject(error);
-//     }
+      return Promise.reject(error);
+    }
 
-//     console.log('[AUTH] ⚠️ Access token rejected with 401');
+    console.log('[AUTH] ⚠️ Access token rejected with 401');
 
-//     originalRequest._retry = true;
+    originalRequest._retry = true;
 
-//     try {
-//       const newAccessToken = await refreshAccessToken();
+    try {
+      const newAccessToken = await refreshAccessToken();
 
-//       console.log('[AUTH] 🔁 Retrying original request:', originalRequest.url);
+      console.log('[AUTH] 🔁 Retrying original request:', originalRequest.url);
 
-//       originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers = originalRequest.headers || {};
 
-//       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
-//       return api(originalRequest);
-//     } catch (refreshError) {
-//       console.error('[AUTH] ❌ Could not refresh session');
+      return api(originalRequest);
+    } catch (refreshError) {
+      console.error('[AUTH] ❌ Could not refresh session');
 
-//       clearAccessToken();
+      clearAccessToken();
 
-//       console.log('[AUTH] 🗑️ Access token cleared from memory');
+      console.log('[AUTH] 🗑️ Access token cleared from memory');
 
-//       return Promise.reject(refreshError);
-//     }
-//   },
-// );
+      return Promise.reject(refreshError);
+    }
+  },
+);
 
 api.interceptors.response.use(
   (response) => response,
