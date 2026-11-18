@@ -7,36 +7,36 @@ import { Skeleton } from '@/components/ui/skeleton';
 import api from '@/services/api';
 import { getImageUrl } from '@/lib/getImageUrl';
 
-/**
- * Backend:
- * GET /api/news
- *
- * Priority order:
- * high → medium → low
- *
- * First 4 priority-sorted news are displayed.
- */
+import { formatNepaliDate } from '@/lib/nepaliDate';
 
-const formatDate = (value) => {
-  if (!value) return '';
+const getAuthor = (story) => {
+  const author = story?.author ?? story?.author_name;
 
-  const date = new Date(value);
+  if (!author) return '';
 
-  return Number.isNaN(date.getTime())
-    ? ''
-    : date.toLocaleDateString('ne-NP', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
+  return typeof author === 'string' ? author : author.name || '';
 };
 
-const gridClass = 'grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4';
+const SIZE = {
+  heading: 'text-[clamp(28px,2.083vw,40px)] leading-[1.2]',
+
+  title: 'text-[clamp(19px,1.25vw,24px)] leading-[1.35]',
+
+  meta: 'text-[clamp(14px,0.833vw,16px)] leading-[1.4]',
+
+  caption: 'text-[clamp(16px,0.9375vw,18px)] leading-[1.55]',
+};
+
+const gridClass = 'grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4';
 
 function TrendingCard({ story, variants, getImageUrl, onSelect }) {
   const src = getImageUrl(story);
-  const date = formatDate(story.published_at);
+  const date = formatNepaliDate(story.published_at || story.created_at);
+  const author = getAuthor(story);
+
   const canSelect = Boolean(story?.slug);
+
+  const caption = story?.excerpt || story?.caption || story?.description || '';
 
   return (
     <motion.article
@@ -51,10 +51,11 @@ function TrendingCard({ story, variants, getImageUrl, onSelect }) {
           onSelect(story);
         }
       }}
-      className={`group flex min-w-0 flex-col items-start gap-4 outline-none focus-visible:ring-2 focus-visible:ring-[#16181A] focus-visible:ring-offset-2 2xl:gap-6 ${
+      className={`group flex min-w-0 flex-col items-start font-['Mukta',sans-serif] tracking-[0.002em] text-[#16181A] outline-none focus-visible:ring-2 focus-visible:ring-[#16181A] focus-visible:ring-offset-2 ${
         canSelect ? 'cursor-pointer' : ''
       }`}>
-      <AspectRatio ratio={402 / 300} className="w-full overflow-hidden bg-neutral-200">
+      {/* Image */}
+      <AspectRatio ratio={402 / 300} className="w-full overflow-hidden bg-[#DDE0E3]">
         {src ? (
           <img
             src={src}
@@ -63,35 +64,49 @@ function TrendingCard({ story, variants, getImageUrl, onSelect }) {
             className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-neutral-500">
+          <div className="flex h-full w-full items-center justify-center text-sm text-[#979EA9]">
             No image available
           </div>
         )}
       </AspectRatio>
 
-      <div className="flex w-full flex-col items-start gap-3 2xl:gap-4">
-        <div className="flex w-full flex-col items-start gap-2">
-          <h3 className="line-clamp-2 w-full font-['Mukta',sans-serif] text-xl font-bold leading-[1.5] tracking-[0.002em] text-[#16181A] transition-colors group-hover:text-[#164B99] md:text-2xl lg:text-base xl:text-lg 2xl:text-2xl">
+      {/* Content */}
+      {/* Content */}
+      <div className="mt-4 flex w-full flex-col">
+        {/* Title */}
+        <div className="h-[3.9rem] w-full overflow-hidden">
+          <h3
+            className={`line-clamp-2 w-full font-bold tracking-[0.002em] transition-colors group-hover:text-[#164B99] ${SIZE.title}`}>
             {story.title}
           </h3>
-
-          <div className="flex w-full items-center justify-between gap-4 font-['Mukta',sans-serif] text-sm leading-6 tracking-[0.002em] text-[#16181A] sm:text-base 2xl:gap-12">
-            {story.author && <span className="truncate underline">{story.author}</span>}
-
-            {date && <span className="shrink-0">{date}</span>}
-          </div>
         </div>
 
-        {(story.excerpt || story.caption) && (
-          <p className="line-clamp-3 w-full font-['Mukta',sans-serif] text-sm leading-6 tracking-[0.002em] text-[#4A4E54] sm:text-base 2xl:text-lg">
-            {story.excerpt || story.caption}
+        {/* Author + Date */}
+        <div
+          className={`mt-1 flex min-h-[1.4rem] w-full items-center justify-between gap-4 ${SIZE.meta}`}>
+          {author ? (
+            <span className="min-w-0 truncate underline underline-offset-2">
+              {author}
+            </span>
+          ) : (
+            <span />
+          )}
+
+          {date && <span className="shrink-0 whitespace-nowrap">{date}</span>}
+        </div>
+
+        {/* Description */}
+        {caption && (
+          <p
+            className={`mt-2 w-full     text-justify
+ text-[#4A4E54] ${SIZE.caption}`}>
+            {caption}
           </p>
         )}
       </div>
     </motion.article>
   );
 }
-
 export default function Trending({ title = 'Trending News', onSelect }) {
   const reduce = useReducedMotion();
   const navigate = useNavigate();
@@ -99,9 +114,6 @@ export default function Trending({ title = 'Trending News', onSelect }) {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  /*
-   * Fetch news from backend
-   */
   useEffect(() => {
     const fetchTrendingNews = async () => {
       try {
@@ -116,24 +128,13 @@ export default function Trending({ title = 'Trending News', onSelect }) {
 
         const newsData = Array.isArray(response.data?.data) ? response.data.data : [];
 
-        /*
-         * Keep existing news data.
-         */
-        const publishedNews = newsData;
-
-        /*
-         * Priority order:
-         * high = 1
-         * medium = 2
-         * low = 3
-         */
         const priorityOrder = {
           high: 1,
           medium: 2,
           low: 3,
         };
 
-        const priorityNews = [...publishedNews].sort((a, b) => {
+        const priorityNews = [...newsData].sort((a, b) => {
           const priorityA = priorityOrder[String(a.priority || '').toLowerCase()] ?? 999;
 
           const priorityB = priorityOrder[String(b.priority || '').toLowerCase()] ?? 999;
@@ -141,12 +142,10 @@ export default function Trending({ title = 'Trending News', onSelect }) {
           return priorityA - priorityB;
         });
 
-        /*
-         * Show first 4 priority-sorted news.
-         */
         setNews(priorityNews.slice(0, 4));
       } catch (error) {
         console.error('Unable to load trending news:', error);
+
         setNews([]);
       } finally {
         setLoading(false);
@@ -156,14 +155,8 @@ export default function Trending({ title = 'Trending News', onSelect }) {
     fetchTrendingNews();
   }, []);
 
-  /*
-   * Backend image URL.
-   */
   const getImageurl = (item) => getImageUrl(item?.featured_image || item?.images?.[0]);
 
-  /*
-   * Navigate to news details.
-   */
   const handleSelect = (story) => {
     if (!story?.slug) return;
 
@@ -175,9 +168,6 @@ export default function Trending({ title = 'Trending News', onSelect }) {
     navigate(`/news/${story.slug}`);
   };
 
-  /*
-   * Animations.
-   */
   const container = {
     hidden: {},
     show: {
@@ -192,6 +182,7 @@ export default function Trending({ title = 'Trending News', onSelect }) {
       opacity: reduce ? 1 : 0,
       y: reduce ? 0 : 20,
     },
+
     show: {
       opacity: 1,
       y: 0,
@@ -211,20 +202,24 @@ export default function Trending({ title = 'Trending News', onSelect }) {
   return (
     <section
       aria-labelledby="trending-heading"
-      className="mx-auto flex w-full max-w-[1926px] flex-col items-start gap-6 py-10 px-4 sm:gap-7 sm:py-12 sm:px-6 md:px-10 lg:px-16 xl:gap-8 xl:py-16 xl:px-[120px]">
+      className="mx-auto flex w-full max-w-[1920px] flex-col items-start gap-6 px-4 py-10 sm:px-6 sm:py-12 md:px-10 lg:px-16 xl:gap-8 xl:px-[120px] xl:py-20">
       <h2
         id="trending-heading"
-        className="font-['Mukta',sans-serif] text-2xl font-bold leading-[1.2] tracking-[0.002em] text-[#16181A] sm:text-3xl md:text-4xl 2xl:text-[40px] 2xl:leading-[48px]">
+        className={`font-['Mukta',sans-serif] font-bold tracking-[0.002em] text-[#16181A] ${SIZE.heading}`}>
         {title}
       </h2>
 
       {loading ? (
         <div className={`${gridClass} w-full`}>
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="flex flex-col gap-4">
+            <div key={i} className="flex flex-col gap-5">
               <Skeleton className="aspect-[402/300] w-full rounded-none" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-6 w-2/3" />
+
+              <Skeleton className="h-7 w-full" />
+
+              <Skeleton className="h-5 w-2/3" />
+
+              <Skeleton className="h-20 w-full" />
             </div>
           ))}
         </div>

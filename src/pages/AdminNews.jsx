@@ -14,8 +14,142 @@ import {
 } from 'lucide-react';
 
 import api from '@/services/api';
+import { getImageUrl } from '@/lib/getImageUrl';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 import AdminNewsForm from '@/components/admin/AdminNewsForm';
+
+/* ------------------------------------------------------------------
+   CONFIG
+------------------------------------------------------------------- */
+const MAX_NEWS_IMAGES = 3;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const VALID_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+/*
+ * false -> real PUT request
+ * true  -> POST + _method=PUT
+ */
+const USE_METHOD_SPOOFING = false;
+
+/* ------------------------------------------------------------------
+   PURE HELPERS
+------------------------------------------------------------------- */
+
+const isTrue = (value) => {
+  return value === true || value === 1 || value === '1' || value === 'true';
+};
+
+const normalizePriority = (value) => {
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase();
+
+  return ['high', 'medium', 'low'].includes(normalized) ? normalized : 'medium';
+};
+
+const getBackendError = (error) => {
+  const backendErrors = error.response?.data?.errors;
+
+  if (backendErrors) {
+    const firstError = Object.values(backendErrors)?.[0]?.[0];
+
+    if (firstError) {
+      return firstError;
+    }
+  }
+
+  return (
+    error.response?.data?.message ||
+    error.message ||
+    'Something went wrong. Please try again.'
+  );
+};
+
+/* Raw image path / URL returned by backend. */
+const getImagePath = (image) => {
+  if (!image) {
+    return '';
+  }
+
+  if (typeof image === 'string') {
+    return image;
+  }
+
+  return image?.path || image?.url || image?.image || image?.image_path || '';
+};
+
+/*
+ * Stable identifier for an existing image.
+ * Backend id is preferred.
+ * Image path is used as fallback.
+ */
+const getImageId = (image) => {
+  return image?.id ?? getImagePath(image);
+};
+
+/*
+ * Compare image paths without considering:
+ * - domain
+ * - leading slash
+ */
+const isSamePath = (a, b) => {
+  const clean = (value) =>
+    String(value || '')
+      .replace(/^https?:\/\/[^/]+/i, '')
+      .replace(/^\/+/, '');
+
+  return Boolean(clean(a)) && clean(a) === clean(b);
+};
+
+/* Final image URL used by <img>. */
+const resolveImage = (image) => {
+  const path = getImagePath(image);
+
+  return path ? getImageUrl(path) : '';
+};
+
+/*
+ * Featured image first, followed by gallery images.
+ * Duplicate URLs are removed.
+ */
+const getArticleImages = (article) => {
+  const all = [];
+
+  if (article?.featured_image) {
+    all.push(article.featured_image);
+  }
+
+  if (Array.isArray(article?.images)) {
+    all.push(...article.images);
+  }
+
+  return [...new Set(all.map(resolveImage).filter(Boolean))];
+};
+
+/*
+ * Featured image.
+ * If there is no featured image, first gallery image is used
+ * only for the article list thumbnail.
+ */
+const getFeaturedImage = (article) => {
+  if (!article) {
+    return '';
+  }
+
+  if (article.featured_image) {
+    return resolveImage(article.featured_image);
+  }
+
+  if (Array.isArray(article.images) && article.images.length > 0) {
+    return resolveImage(article.images[0]);
+  }
+
+  return '';
+};
+
+const getStatus = (article) => {
+  return isTrue(article.is_published) ? 'Published' : 'Draft';
+};
 
 function AdminNews() {
   const [news, setNews] = useState([]);
@@ -25,6 +159,7 @@ function AdminNews() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -50,11 +185,31 @@ function AdminNews() {
   const [isPublished, setIsPublished] = useState(false);
   const [isFeatured, setIsFeatured] = useState(false);
 
+  /* Newly selected gallery images. */
   const [images, setImages] = useState([]);
+
+  /* Newly selected featured image. */
   const [featuredImage, setFeaturedImage] = useState(null);
 
+  /* Preview URLs for newly selected images. */
   const [imagePreviews, setImagePreviews] = useState([]);
   const [featuredPreview, setFeaturedPreview] = useState('');
+
+  /*
+   * Existing image edit state.
+   *
+   * featuredRemoved:
+   *   true = old featured image must be removed.
+   *
+   * removedImageIds:
+   *   existing gallery images the user removed.
+   */
+  const [featuredRemoved, setFeaturedRemoved] = useState(false);
+  const [removedImageIds, setRemovedImageIds] = useState([]);
+
+  /* ------------------------------------------------------------------
+     NOTIFICATIONS
+  ------------------------------------------------------------------- */
 
   const showErrorNotification = useCallback((message) => {
     setError(message);
@@ -65,59 +220,92 @@ function AdminNews() {
     }, 3500);
   }, []);
 
-  const showSuccessNotification = (message) => {
+  const showSuccessNotification = useCallback((message) => {
     setSuccess(message);
     setError('');
 
     window.setTimeout(() => {
       setSuccess((current) => (current === message ? '' : current));
     }, 3500);
-  };
+  }, []);
 
-  const isTrue = (value) => {
-    return value === true || value === 1 || value === '1' || value === 'true';
-  };
+  /* ------------------------------------------------------------------
+     DERIVED IMAGE STATE
+  ------------------------------------------------------------------- */
 
-  const normalizePriority = (value) => {
-    const normalized = String(value ?? '')
-      .trim()
-      .toLowerCase();
-
-    return ['high', 'medium', 'low'].includes(normalized) ? normalized : 'medium';
-  };
-
-  const getBackendError = (error) => {
-    const backendErrors = error.response?.data?.errors;
-
-    if (backendErrors) {
-      const firstError = Object.values(backendErrors)?.[0]?.[0];
-
-      if (firstError) {
-        return firstError;
-      }
-    }
-
-    return (
-      error.response?.data?.message ||
-      error.message ||
-      'Something went wrong. Please try again.'
-    );
-  };
-
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) {
+  /*
+   * Existing featured image that is still active.
+   *
+   * If:
+   * - no editing article
+   * - featured image was removed
+   *
+   * then this returns an empty string.
+   */
+  const existingFeaturedImage = useMemo(() => {
+    if (!editingNews || featuredRemoved) {
       return '';
     }
 
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return imagePath;
+    return getImagePath(editingNews.featured_image);
+  }, [editingNews, featuredRemoved]);
+
+  /*
+   * Existing gallery images that are still visible.
+   *
+   * The old featured image is hidden from the gallery because
+   * featured_image is displayed separately.
+   */
+  const existingGalleryImages = useMemo(() => {
+    if (!editingNews || !Array.isArray(editingNews.images)) {
+      return [];
     }
 
-    const apiUrl = import.meta.env.VITE_API_URL || '';
-    const baseUrl = apiUrl.replace(/\/api\/?$/, '');
+    const featuredPath = getImagePath(editingNews.featured_image);
 
-    return `${baseUrl}/storage/${String(imagePath).replace(/^\/+/, '')}`;
-  };
+    return editingNews.images.filter((image) => {
+      const imagePath = getImagePath(image);
+
+      if (!imagePath) {
+        return false;
+      }
+
+      /*
+       * Do not display the featured image twice.
+       *
+       * This is only UI filtering.
+       * Actual deletion of the old featured image from the
+       * backend is handled by getImageRemoval().
+       */
+      if (featuredPath && isSamePath(imagePath, featuredPath)) {
+        return false;
+      }
+
+      return !removedImageIds.includes(getImageId(image));
+    });
+  }, [editingNews, removedImageIds]);
+
+  /*
+   * Does the article currently have a featured image?
+   *
+   * New file OR existing saved image.
+   */
+  const hasFeaturedImageNow =
+    featuredImage instanceof File || Boolean(existingFeaturedImage);
+
+  /*
+   * A news article cannot remain featured when it has no
+   * featured image.
+   */
+  useEffect(() => {
+    if (!hasFeaturedImageNow && isFeatured) {
+      setIsFeatured(false);
+    }
+  }, [hasFeaturedImageNow, isFeatured]);
+
+  /* ------------------------------------------------------------------
+     FETCH
+  ------------------------------------------------------------------- */
 
   const fetchNews = useCallback(async () => {
     try {
@@ -127,8 +315,6 @@ function AdminNews() {
           per_page: 50,
         },
       });
-
-      console.log('Admin news response:', response.data);
 
       if (!response.data?.success) {
         showErrorNotification(response.data?.message || 'Unable to load news.');
@@ -166,8 +352,6 @@ function AdminNews() {
         },
       });
 
-      console.log('Admin categories response:', response.data);
-
       if (!response.data?.success) {
         showErrorNotification(response.data?.message || 'Unable to load categories.');
         return;
@@ -196,11 +380,15 @@ function AdminNews() {
   }, [showErrorNotification]);
 
   useEffect(() => {
-    Promise.resolve().then(fetchNews);
-    Promise.resolve().then(fetchCategories);
+    fetchNews();
+    fetchCategories();
   }, [fetchNews, fetchCategories]);
 
-  const resetForm = () => {
+  /* ------------------------------------------------------------------
+     FORM RESET / OPEN / CLOSE
+  ------------------------------------------------------------------- */
+
+  const resetForm = useCallback(() => {
     imagePreviews.forEach((preview) => {
       if (preview?.url) {
         URL.revokeObjectURL(preview.url);
@@ -228,19 +416,26 @@ function AdminNews() {
     setImagePreviews([]);
     setFeaturedPreview('');
 
+    setFeaturedRemoved(false);
+    setRemovedImageIds([]);
+
     setFormErrors({});
-  };
+  }, [imagePreviews, featuredPreview]);
 
   const openCreateModal = () => {
-    setEditingNews(null);
     resetForm();
+
+    setEditingNews(null);
 
     setError('');
     setSuccess('');
+
     setShowModal(true);
   };
 
   const openEditModal = (article) => {
+    resetForm();
+
     setEditingNews(article);
 
     setCategoryId(
@@ -253,21 +448,18 @@ function AdminNews() {
     setExcerpt(article.excerpt || '');
     setBody(article.body || '');
     setCaption(article.caption || '');
-
     setAuthor(article.author || article.added_by || '');
-
     setPriority(normalizePriority(article.priority));
-
     setIsPublished(isTrue(article.is_published));
-    setIsFeatured(isTrue(article.is_featured));
 
-    setImages([]);
-    setFeaturedImage(null);
+    /*
+     * is_featured can only be true when there is a saved
+     * featured image.
+     */
+    const hasSavedFeaturedImage = Boolean(getImagePath(article.featured_image));
 
-    setImagePreviews([]);
-    setFeaturedPreview('');
+    setIsFeatured(hasSavedFeaturedImage && isTrue(article.is_featured));
 
-    setFormErrors({});
     setError('');
     setSuccess('');
 
@@ -284,6 +476,10 @@ function AdminNews() {
 
     resetForm();
   };
+
+  /* ------------------------------------------------------------------
+     VALIDATION
+  ------------------------------------------------------------------- */
 
   const validateForm = () => {
     const errors = {};
@@ -323,29 +519,207 @@ function AdminNews() {
     return true;
   };
 
+  /* ------------------------------------------------------------------
+     IMAGE REMOVAL CALCULATION
+  ------------------------------------------------------------------- */
+
+  /*
+   * Calculates the FINAL saved image state.
+   *
+   * Example:
+   *
+   * Existing:
+   *   image1
+   *   image2
+   *   image3
+   *
+   * User removes image2:
+   *
+   * remainingImages:
+   *   image1
+   *   image3
+   *
+   * User removes everything:
+   *
+   * remainingImages:
+   *   []
+   */
+  const getImageRemoval = () => {
+    const savedImages = Array.isArray(editingNews?.images) ? editingNews.images : [];
+
+    const idsToRemove = new Set(removedImageIds);
+
+    /*
+     * If the existing featured image was removed or replaced,
+     * also remove its copy from the backend images array if
+     * the backend stores it there.
+     */
+    if (featuredRemoved) {
+      const oldFeaturedPath = getImagePath(editingNews?.featured_image);
+
+      if (oldFeaturedPath) {
+        savedImages.forEach((image) => {
+          const imagePath = getImagePath(image);
+
+          if (isSamePath(imagePath, oldFeaturedPath)) {
+            idsToRemove.add(getImageId(image));
+          }
+        });
+      }
+    }
+
+    const remainingImages = savedImages.filter(
+      (image) => !idsToRemove.has(getImageId(image)),
+    );
+
+    const remainingImagePaths = remainingImages
+      .map((image) => getImagePath(image))
+      .filter(Boolean);
+
+    return {
+      idsToRemove: [...idsToRemove],
+      remaining: remainingImages.length,
+      remainingImages: remainingImagePaths,
+    };
+  };
+
+  /* ------------------------------------------------------------------
+     FORM DATA
+  ------------------------------------------------------------------- */
+
+  /*
+   * Used for:
+   * - creating news
+   * - updating news when new files are selected
+   */
   const buildNewsFormData = () => {
     const formData = new FormData();
+    console.log(formData, 'FPRMARA');
 
     formData.append('title', title.trim());
     formData.append('excerpt', excerpt.trim());
     formData.append('body', body.trim());
     formData.append('category_id', String(Number(categoryId)));
     formData.append('is_published', isPublished ? '1' : '0');
-    formData.append('is_featured', isFeatured ? '1' : '0');
     formData.append('priority', priority);
     formData.append('caption', caption.trim());
     formData.append('author', author.trim());
 
+    /*
+     * Featured state is based on the FINAL state.
+     *
+     * No featured image = is_featured 0
+     */
+    const hasActiveFeaturedImage =
+      featuredImage instanceof File || Boolean(existingFeaturedImage);
+
+    formData.append('is_featured', hasActiveFeaturedImage && isFeatured ? '1' : '0');
+
+    /* New gallery images. */
     images.forEach((file) => {
       formData.append('images[]', file, file.name);
     });
 
+    /*
+     * New featured image.
+     *
+     * This replaces the old featured image.
+     */
     if (featuredImage instanceof File) {
       formData.append('featured_image', featuredImage, featuredImage.name);
+    } else if (editingNews?.id && featuredRemoved) {
+      /*
+       * Existing featured image was removed and there is
+       * no replacement.
+       */
+      formData.append('featured_image', '');
+      formData.append('is_featured', '0');
+    }
+
+    /*
+     * Existing gallery images that were removed.
+     *
+     * This is needed when new files are also being uploaded.
+     */
+    if (editingNews?.id) {
+      const { idsToRemove } = getImageRemoval();
+
+      idsToRemove.forEach((imageId) => {
+        formData.append('removed_image_ids[]', String(imageId));
+      });
     }
 
     return formData;
   };
+
+  /*
+   * JSON body for updates where there are NO new files.
+   *
+   * This is extremely important because JSON allows us to send:
+   *
+   * featured_image: null
+   * images: []
+   *
+   * as actual values.
+   */
+  const buildNewsPayload = () => {
+    const { idsToRemove, remainingImages } = getImageRemoval();
+
+    console.log(idsToRemove, ...remainingImages);
+
+    const hasActiveFeaturedImage =
+      featuredImage instanceof File || Boolean(existingFeaturedImage);
+
+    const payload = {
+      title: title.trim(),
+      excerpt: excerpt.trim(),
+      body: body.trim(),
+      category_id: Number(categoryId),
+      is_published: isPublished,
+      priority,
+      caption: caption.trim(),
+      author: author.trim(),
+
+      /*
+       * If there is no active featured image,
+       * this becomes false.
+       */
+      is_featured: hasActiveFeaturedImage && isFeatured,
+    };
+
+    /*
+     * User removed the existing featured image
+     * and did not select a replacement.
+     */
+    if (featuredRemoved && !(featuredImage instanceof File)) {
+      payload.featured_image = null;
+      payload.is_featured = false;
+    }
+
+    /*
+     * If any saved images were removed, send the FINAL
+     * gallery image list.
+     *
+     * If all images were removed:
+     *
+     * images: []
+     */
+    if (idsToRemove.length > 0) {
+      payload.images = remainingImages;
+
+      /*
+       * Keep this as well for backends that use
+       * removed_image_ids for physical file deletion.
+       */
+      payload.removed_image_ids = idsToRemove;
+    }
+
+    return payload;
+  };
+
+  /* ------------------------------------------------------------------
+     CREATE
+  ------------------------------------------------------------------- */
 
   const handleCreateNews = async (event) => {
     event.preventDefault();
@@ -364,8 +738,6 @@ function AdminNews() {
 
       const response = await api.post('/admin/posts', formData);
 
-      console.log('Create news response:', response.data);
-
       if (!response.data?.success) {
         showErrorNotification(response.data?.message || 'Unable to create news.');
         return;
@@ -373,22 +745,17 @@ function AdminNews() {
 
       const message = response.data.message || 'News created successfully.';
 
-      // Close modal
       setShowModal(false);
       setEditingNews(null);
 
-      // Clear form
       resetForm();
 
-      // IMPORTANT:
-      // Clear search so the new article is shown in the normal News page.
       setSearch('');
 
-      // Reload news list
       setLoading(true);
+
       await fetchNews();
 
-      // Show success message
       showSuccessNotification(message);
     } catch (error) {
       console.error('Create news error:', error);
@@ -398,6 +765,10 @@ function AdminNews() {
       setSaving(false);
     }
   };
+
+  /* ------------------------------------------------------------------
+     UPDATE
+  ------------------------------------------------------------------- */
 
   const handleUpdateNews = async (event) => {
     event.preventDefault();
@@ -417,11 +788,31 @@ function AdminNews() {
     try {
       setSaving(true);
 
-      const formData = buildNewsFormData();
+      /*
+       * New files require FormData.
+       *
+       * No new files use JSON so null and [] are preserved.
+       */
+      const hasNewFiles = images.length > 0 || featuredImage instanceof File;
+      console.log(hasNewFiles, 'dssds');
 
-      const response = await api.put(`/admin/posts/${editingNews.id}`, formData);
+      const requestBody = hasNewFiles ? buildNewsFormData() : buildNewsPayload();
 
-      console.log('Update news response:', response.data);
+      let response;
+
+      console.log(requestBody);
+
+      if (USE_METHOD_SPOOFING) {
+        if (hasNewFiles) {
+          requestBody.append('_method', 'PUT');
+        } else {
+          requestBody._method = 'PUT';
+        }
+
+        response = await api.post(`/admin/posts/${editingNews.id}`, requestBody);
+      } else {
+        response = await api.put(`/admin/posts/${editingNews.id}`, requestBody);
+      }
 
       if (!response.data?.success) {
         showErrorNotification(response.data?.message || 'Unable to update news.');
@@ -435,10 +826,11 @@ function AdminNews() {
 
       resetForm();
 
-      showSuccessNotification(message);
-
       setLoading(true);
+
       await fetchNews();
+
+      showSuccessNotification(message);
     } catch (error) {
       console.error('Update news error:', error);
 
@@ -447,6 +839,10 @@ function AdminNews() {
       setSaving(false);
     }
   };
+
+  /* ------------------------------------------------------------------
+     PUBLISH
+  ------------------------------------------------------------------- */
 
   const handlePublishNews = async (postId) => {
     try {
@@ -482,17 +878,31 @@ function AdminNews() {
     }
   };
 
-  const handleDeleteNews = async (article) => {
+  /* ------------------------------------------------------------------
+     DELETE
+  ------------------------------------------------------------------- */
+
+  const requestDeleteNews = (article) => {
     if (!article?.id) {
       showErrorNotification('Invalid news post.');
       return;
     }
 
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${article.title}"?`,
-    );
+    setDeleteTarget(article);
+  };
 
-    if (!confirmed) {
+  const cancelDeleteNews = () => {
+    if (deletingId) {
+      return;
+    }
+
+    setDeleteTarget(null);
+  };
+
+  const handleDeleteNews = async () => {
+    const article = deleteTarget;
+
+    if (!article?.id) {
       return;
     }
 
@@ -518,36 +928,61 @@ function AdminNews() {
       showErrorNotification(getBackendError(error));
     } finally {
       setDeletingId(null);
+      setDeleteTarget(null);
     }
   };
 
+  /* ------------------------------------------------------------------
+     IMAGE HANDLERS
+  ------------------------------------------------------------------- */
+
+  /*
+   * Add new gallery images.
+   *
+   * Active saved images + newly selected images <= 3.
+   */
   const handleImagesChange = (event) => {
     const selectedFiles = Array.from(event.target.files || []);
 
-    if (images.length + selectedFiles.length > 3) {
-      showErrorNotification('You can upload a maximum of 3 images.');
+    if (selectedFiles.length === 0) {
+      return;
+    }
+
+    const availableSlots = MAX_NEWS_IMAGES - existingGalleryImages.length - images.length;
+
+    if (availableSlots <= 0) {
+      showErrorNotification(`You can upload a maximum of ${MAX_NEWS_IMAGES} images.`);
 
       event.target.value = '';
       return;
     }
 
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-
     const validFiles = selectedFiles.filter(
-      (file) => validTypes.includes(file.type) && file.size <= 5 * 1024 * 1024,
+      (file) => VALID_IMAGE_TYPES.includes(file.type) && file.size <= MAX_IMAGE_SIZE,
     );
 
+    const acceptedFiles = validFiles.slice(0, availableSlots);
+
     if (validFiles.length !== selectedFiles.length) {
+      showErrorNotification('Only JPG, PNG and WEBP images up to 5 MB are allowed.');
+    } else if (validFiles.length > availableSlots) {
       showErrorNotification(
-        'Only JPG, JPEG, PNG and WEBP images up to 5 MB are allowed.',
+        `You can add only ${availableSlots} more image${
+          availableSlots === 1 ? '' : 's'
+        }.`,
       );
     }
 
-    setImages((current) => [...current, ...validFiles]);
+    if (acceptedFiles.length === 0) {
+      event.target.value = '';
+      return;
+    }
+
+    setImages((current) => [...current, ...acceptedFiles]);
 
     setImagePreviews((current) => [
       ...current,
-      ...validFiles.map((file) => ({
+      ...acceptedFiles.map((file) => ({
         file,
         url: URL.createObjectURL(file),
       })),
@@ -556,37 +991,76 @@ function AdminNews() {
     event.target.value = '';
   };
 
+  /*
+   * Select / replace featured image.
+   *
+   * IMPORTANT:
+   * When editing an existing article and selecting a new
+   * featured image, the old featured image must be considered
+   * removed.
+   */
   const handleFeaturedImageChange = (event) => {
-    const file = event.target.files?.[0] || null;
+    const file = event.target.files?.[0];
 
     if (!file) {
       return;
     }
 
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-
-    if (!validTypes.includes(file.type)) {
-      showErrorNotification('Only JPG, JPEG, PNG and WEBP images are allowed.');
-
-      event.target.value = '';
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      showErrorNotification('Featured image must be 5 MB or less.');
+    if (!VALID_IMAGE_TYPES.includes(file.type)) {
+      setFormErrors((prev) => ({
+        ...prev,
+        featuredImage: 'Only JPG, PNG and WEBP images are allowed.',
+      }));
 
       event.target.value = '';
       return;
     }
 
+    if (file.size > MAX_IMAGE_SIZE) {
+      setFormErrors((prev) => ({
+        ...prev,
+        featuredImage: 'Featured image must be 5 MB or less.',
+      }));
+
+      event.target.value = '';
+      return;
+    }
+
+    /*
+     * Release previous new-file preview.
+     */
     if (featuredPreview) {
       URL.revokeObjectURL(featuredPreview);
     }
 
+    /*
+     * IMPORTANT:
+     *
+     * Existing featured image:
+     *     old.jpg
+     *
+     * User selects:
+     *     new.jpg
+     *
+     * Mark old.jpg as removed so it cannot remain
+     * in the backend.
+     */
+    if (editingNews?.id) {
+      setFeaturedRemoved(true);
+    }
+
     setFeaturedImage(file);
     setFeaturedPreview(URL.createObjectURL(file));
+
+    setFormErrors((prev) => ({
+      ...prev,
+      featuredImage: '',
+    }));
+
+    event.target.value = '';
   };
 
+  /* Remove newly selected gallery image. */
   const removeImage = (index) => {
     const preview = imagePreviews[index];
 
@@ -601,6 +1075,9 @@ function AdminNews() {
     );
   };
 
+  /*
+   * Remove newly selected featured image.
+   */
   const removeFeaturedImage = () => {
     if (featuredPreview) {
       URL.revokeObjectURL(featuredPreview);
@@ -608,7 +1085,56 @@ function AdminNews() {
 
     setFeaturedImage(null);
     setFeaturedPreview('');
+
+    setFormErrors((prev) => ({
+      ...prev,
+      featuredImage: '',
+    }));
   };
+
+  /*
+   * Remove EXISTING saved featured image.
+   *
+   * This means:
+   *
+   * featured_image = null
+   * is_featured = false
+   */
+  const removeExistingFeaturedImage = () => {
+    setFeaturedRemoved(true);
+
+    /*
+     * Immediately uncheck Featured News.
+     */
+    setIsFeatured(false);
+
+    setFormErrors((prev) => ({
+      ...prev,
+      featuredImage: '',
+    }));
+  };
+
+  /*
+   * Remove an existing saved gallery image.
+   */
+  const removeExistingImage = (imageOrId) => {
+    const imageId =
+      imageOrId !== null && typeof imageOrId === 'object'
+        ? getImageId(imageOrId)
+        : imageOrId;
+
+    if (imageId === undefined || imageId === null || imageId === '') {
+      return;
+    }
+
+    setRemovedImageIds((current) =>
+      current.includes(imageId) ? current : [...current, imageId],
+    );
+  };
+
+  /* ------------------------------------------------------------------
+     SEARCH
+  ------------------------------------------------------------------- */
 
   const filteredNews = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -626,23 +1152,9 @@ function AdminNews() {
     });
   }, [news, search]);
 
-  const getArticleImages = (article) => {
-    if (!Array.isArray(article?.images)) {
-      return [];
-    }
-
-    return article.images
-      .map((image) => {
-        if (typeof image === 'string') {
-          return getImageUrl(image);
-        }
-
-        return getImageUrl(
-          image?.path || image?.url || image?.image || image?.image_path || '',
-        );
-      })
-      .filter(Boolean);
-  };
+  /* ------------------------------------------------------------------
+     GALLERY
+  ------------------------------------------------------------------- */
 
   const openGallery = (article) => {
     const articleImages = getArticleImages(article);
@@ -677,10 +1189,6 @@ function AdminNews() {
     );
   };
 
-  const getStatus = (article) => {
-    return isTrue(article.is_published) ? 'Published' : 'Draft';
-  };
-
   return (
     <div className="min-h-screen bg-[#F6F8FA]">
       <AdminSidebar />
@@ -689,7 +1197,6 @@ function AdminNews() {
         <div className="w-full px-4 py-5 sm:px-6 lg:px-8">
           <div className="mx-auto w-full max-w-[1500px]">
             {/* Header */}
-
             <div className="flex flex-col gap-4 border-b border-[#EEF0F2] pb-5 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0">
                 <div className="flex items-center gap-3">
@@ -733,7 +1240,6 @@ function AdminNews() {
             </div>
 
             {/* Notifications */}
-
             {error && (
               <div className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
                 <span>{error}</span>
@@ -763,7 +1269,6 @@ function AdminNews() {
             )}
 
             {/* Articles */}
-
             <div className="mt-5 overflow-hidden rounded-2xl border border-[#EEF0F2] bg-white shadow-sm">
               <div className="flex flex-col gap-3 border-b border-[#EEF0F2] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div>
@@ -780,6 +1285,7 @@ function AdminNews() {
                   onClick={() => {
                     setLoading(true);
                     setCategoriesLoading(true);
+
                     fetchNews();
                     fetchCategories();
                   }}
@@ -794,7 +1300,6 @@ function AdminNews() {
                 <div className="flex min-h-[300px] items-center justify-center">
                   <div className="flex items-center gap-2.5 text-slate-500">
                     <LoaderCircle className="size-5 animate-spin" />
-
                     <span className="text-sm">Loading news...</span>
                   </div>
                 </div>
@@ -827,7 +1332,6 @@ function AdminNews() {
               ) : (
                 <>
                   {/* Desktop */}
-
                   <div className="hidden overflow-x-auto lg:block">
                     <table className="w-full min-w-[920px]">
                       <thead>
@@ -862,6 +1366,8 @@ function AdminNews() {
                         {filteredNews.map((article) => {
                           const articleImages = getArticleImages(article);
 
+                          const featuredSrc = getFeaturedImage(article);
+
                           const published = isTrue(article.is_published);
 
                           const articlePriority = normalizePriority(article.priority);
@@ -873,9 +1379,9 @@ function AdminNews() {
                               <td className="max-w-[420px] px-5 py-3.5">
                                 <div className="flex items-center gap-3">
                                   <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-slate-100">
-                                    {article.featured_image ? (
+                                    {featuredSrc ? (
                                       <img
-                                        src={getImageUrl(article.featured_image)}
+                                        src={featuredSrc}
                                         alt={article.title || 'News'}
                                         className="size-full object-cover"
                                       />
@@ -919,8 +1425,6 @@ function AdminNews() {
                                 </span>
                               </td>
 
-                              {/* Status + Publish */}
-
                               <td className="px-5 py-3.5">
                                 <div className="flex items-center gap-2">
                                   <span
@@ -960,8 +1464,6 @@ function AdminNews() {
                                 )}
                               </td>
 
-                              {/* Actions */}
-
                               <td className="px-5 py-3.5">
                                 <div className="flex items-center justify-end gap-1.5">
                                   <button
@@ -974,7 +1476,7 @@ function AdminNews() {
 
                                   <button
                                     type="button"
-                                    onClick={() => handleDeleteNews(article)}
+                                    onClick={() => requestDeleteNews(article)}
                                     disabled={deletingId === article.id}
                                     className="flex size-8.5 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                                     title="Delete">
@@ -994,10 +1496,11 @@ function AdminNews() {
                   </div>
 
                   {/* Mobile */}
-
                   <div className="divide-y divide-slate-100 lg:hidden">
                     {filteredNews.map((article) => {
                       const articleImages = getArticleImages(article);
+
+                      const featuredSrc = getFeaturedImage(article);
 
                       const published = isTrue(article.is_published);
 
@@ -1005,9 +1508,9 @@ function AdminNews() {
                         <div key={article.id} className="p-4 sm:p-5">
                           <div className="flex gap-3">
                             <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
-                              {article.featured_image ? (
+                              {featuredSrc ? (
                                 <img
-                                  src={getImageUrl(article.featured_image)}
+                                  src={featuredSrc}
                                   alt={article.title || 'News'}
                                   className="size-full object-cover"
                                 />
@@ -1065,7 +1568,6 @@ function AdminNews() {
                                   onClick={() => openGallery(article)}
                                   className="flex items-center gap-1 text-[11px] font-medium text-[#2168CD]">
                                   <ImageIcon className="size-3.5" />
-
                                   {articleImages.length}
                                 </button>
                               )}
@@ -1082,7 +1584,7 @@ function AdminNews() {
 
                               <button
                                 type="button"
-                                onClick={() => handleDeleteNews(article)}
+                                onClick={() => requestDeleteNews(article)}
                                 disabled={deletingId === article.id}
                                 className="flex size-8.5 items-center justify-center rounded-lg border border-red-200 text-red-600 disabled:opacity-50"
                                 title="Delete">
@@ -1106,7 +1608,6 @@ function AdminNews() {
       </main>
 
       {/* FORM */}
-
       {showModal && (
         <AdminNewsForm
           editingNews={editingNews}
@@ -1132,13 +1633,13 @@ function AdminNews() {
           isFeatured={isFeatured}
           setIsFeatured={setIsFeatured}
           images={images}
-          setImages={setImages}
           featuredImage={featuredImage}
-          setFeaturedImage={setFeaturedImage}
           imagePreviews={imagePreviews}
-          setImagePreviews={setImagePreviews}
           featuredPreview={featuredPreview}
-          setFeaturedPreview={setFeaturedPreview}
+          existingFeaturedImage={existingFeaturedImage}
+          existingImages={existingGalleryImages}
+          removeExistingFeaturedImage={removeExistingFeaturedImage}
+          removeExistingImage={removeExistingImage}
           formErrors={formErrors}
           setFormErrors={setFormErrors}
           handleCreateNews={handleCreateNews}
@@ -1152,8 +1653,65 @@ function AdminNews() {
         />
       )}
 
-      {/* GALLERY */}
+      {/* DELETE CONFIRMATION */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]"
+          onClick={cancelDeleteNews}>
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-news-title"
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
+                <Trash2 className="size-5" />
+              </div>
 
+              <div className="min-w-0">
+                <h2
+                  id="delete-news-title"
+                  className="text-base font-semibold text-[#16181A]">
+                  Delete news?
+                </h2>
+
+                <p className="mt-1 break-words text-sm text-slate-500">
+                  Are you sure you want to delete &quot;
+                  {deleteTarget.title}&quot;? This cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={cancelDeleteNews}
+                disabled={Boolean(deletingId)}
+                className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteNews}
+                disabled={Boolean(deletingId)}
+                className="flex h-10 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60">
+                {deletingId ? (
+                  <>
+                    <LoaderCircle className="size-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GALLERY */}
       {showGallery && galleryImages.length > 0 && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-sm sm:p-6">
           <button

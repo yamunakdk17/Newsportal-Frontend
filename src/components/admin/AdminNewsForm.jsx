@@ -30,10 +30,17 @@ function AdminNewsForm({
   isFeatured,
   setIsFeatured,
 
+  // New (not saved yet) images
   images,
   featuredImage,
   imagePreviews,
   featuredPreview,
+
+  // Saved images that are still active (already filtered by the page)
+  existingFeaturedImage,
+  existingImages,
+  removeExistingFeaturedImage,
+  removeExistingImage,
 
   formErrors,
   setFormErrors,
@@ -66,8 +73,33 @@ function AdminNewsForm({
 
   const ERROR = 'text-sm font-medium leading-[1.5] text-[#981733]';
 
+  // X button at the top-right of a big preview
   const REMOVE =
-    'absolute bottom-2 right-2 flex size-7 items-center justify-center rounded-full bg-white text-slate-700 shadow-md outline-none transition hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-[#2168CD] disabled:opacity-60';
+    'absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-white text-slate-700 shadow-md outline-none transition hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-[#2168CD] disabled:opacity-60';
+
+  // X button at the top-right of a small thumbnail
+  const THUMB_REMOVE =
+    'absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-white text-slate-700 shadow-md outline-none transition hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-[#2168CD] disabled:opacity-60';
+
+  /*
+   * Same logic as the page, so the form and the page always agree.
+   */
+  const getImagePath = (image) =>
+    typeof image === 'string'
+      ? image
+      : image?.path || image?.url || image?.image || image?.image_path || '';
+
+  const getImageId = (image) => image?.id ?? getImagePath(image);
+
+  const safeExistingImages = Array.isArray(existingImages) ? existingImages : [];
+
+  const hasOldFeatured = Boolean(existingFeaturedImage);
+
+  // Will the news have a featured image after saving?
+  const hasFeatured = Boolean(featuredPreview) || hasOldFeatured;
+
+  // Saved images that are still active + new images
+  const totalImages = safeExistingImages.length + images.length;
 
   const handleRemoveFeaturedImage = () => {
     removeFeaturedImage();
@@ -109,9 +141,7 @@ function AdminNewsForm({
             onSubmit={editingNews ? handleUpdateNews : handleCreateNews}
             noValidate
             className="grid grid-cols-1 gap-5 p-4 pb-8 sm:gap-6 sm:p-6 sm:pb-8 xl:grid-cols-[minmax(0,1fr)_330px] xl:gap-7">
-            {/* =====================================================
-                MAIN FORM
-            ====================================================== */}
+            {/* MAIN FORM */}
             <section className="order-1 flex min-w-0 flex-col gap-5 xl:order-1">
               {/* TITLE */}
               <div className="flex flex-col gap-1.5">
@@ -261,7 +291,7 @@ function AdminNewsForm({
                   <ImageIcon className="size-5" />
 
                   <span>
-                    {featuredImage ? 'Change Featured Image' : 'Choose Featured Image'}
+                    {hasFeatured ? 'Change Featured Image' : 'Choose Featured Image'}
                   </span>
 
                   <input
@@ -276,11 +306,16 @@ function AdminNewsForm({
 
                 <p className="text-sm text-slate-500">JPG, PNG or WEBP. Maximum 5 MB.</p>
 
+                {formErrors.featuredImage && (
+                  <p className={ERROR}>{formErrors.featuredImage}</p>
+                )}
+
+                {/* NEW FEATURED IMAGE */}
                 {featuredPreview && (
-                  <div className="relative mt-2 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                  <div className="relative mt-2 overflow-hidden rounded-xl border border-blue-200 bg-slate-50">
                     <img
                       src={featuredPreview}
-                      alt="Featured preview"
+                      alt="New featured image preview"
                       className="h-52 w-full object-cover"
                     />
 
@@ -289,66 +324,51 @@ function AdminNewsForm({
                       onClick={handleRemoveFeaturedImage}
                       disabled={saving}
                       className={REMOVE}
-                      aria-label="Remove featured image">
+                      aria-label="Remove new featured image">
                       <X className="size-4" />
                     </button>
+
+                    <div className="absolute bottom-2 left-2 rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white">
+                      New image
+                    </div>
                   </div>
                 )}
 
-                {editingNews?.featured_image && !featuredPreview && (
+                {/* SAVED FEATURED IMAGE */}
+                {!featuredPreview && hasOldFeatured && (
                   <div className="relative mt-2 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                     <img
-                      src={getImageUrl(editingNews.featured_image)}
-                      alt={editingNews.title || 'Featured image'}
+                      src={getImageUrl(existingFeaturedImage)}
+                      alt={editingNews?.title || 'Featured image'}
                       className="h-52 w-full object-cover"
                     />
+
+                    <button
+                      type="button"
+                      onClick={removeExistingFeaturedImage}
+                      disabled={saving}
+                      className={REMOVE}
+                      aria-label="Remove current featured image">
+                      <X className="size-4" />
+                    </button>
+
+                    <div className="absolute bottom-2 left-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white">
+                      Current image
+                    </div>
+                  </div>
+                )}
+
+                {/* NO FEATURED IMAGE */}
+                {!hasFeatured && (
+                  <div className="mt-2 flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50">
+                    <div className="flex flex-col items-center gap-2 text-center text-slate-400">
+                      <ImageIcon className="size-7" />
+
+                      <span className="text-sm">No featured image</span>
+                    </div>
                   </div>
                 )}
               </div>
-
-              {/* EXISTING BACKEND IMAGES */}
-              {editingNews && (
-                <div className="flex flex-col gap-2">
-                  <label className={LABEL}>Existing Backend Images</label>
-
-                  {Array.isArray(editingNews.images) && editingNews.images.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                      {editingNews.images.map((image, index) => {
-                        const imagePath =
-                          typeof image === 'string'
-                            ? image
-                            : image?.path ||
-                              image?.url ||
-                              image?.image ||
-                              image?.image_path ||
-                              '';
-
-                        return (
-                          <div
-                            key={image?.id || `${imagePath}-${index}`}
-                            className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                            {imagePath ? (
-                              <img
-                                src={getImageUrl(imagePath)}
-                                alt={`Existing news image ${index + 1}`}
-                                className="h-32 w-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-32 items-center justify-center text-sm text-slate-400">
-                                No image
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">
-                      No existing backend images.
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* NEWS IMAGES */}
               <div className="flex flex-col gap-1.5">
@@ -357,7 +377,7 @@ function AdminNewsForm({
                 <label className={UPLOAD}>
                   <ImageIcon className="size-5" />
 
-                  <span>Add Images ({images.length}/3)</span>
+                  <span>Add Images ({totalImages}/3)</span>
 
                   <input
                     ref={imageInputRef}
@@ -365,7 +385,7 @@ function AdminNewsForm({
                     accept="image/jpeg,image/png,image/webp"
                     multiple
                     onChange={handleImagesChange}
-                    disabled={saving || images.length >= 3}
+                    disabled={saving || totalImages >= 3}
                     className="sr-only"
                   />
                 </label>
@@ -374,6 +394,33 @@ function AdminNewsForm({
                   Maximum 3 images. Each image must be 5 MB or less.
                 </p>
 
+                {/* SAVED IMAGES: small thumbnails, cross to remove */}
+                {safeExistingImages.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    {safeExistingImages.map((image, index) => (
+                      <div
+                        key={getImageId(image)}
+                        className="relative size-24 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                        <img
+                          src={getImageUrl(getImagePath(image))}
+                          alt={`Existing news image ${index + 1}`}
+                          className="size-full object-cover"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => removeExistingImage(image)}
+                          disabled={saving}
+                          className={THUMB_REMOVE}
+                          aria-label={`Remove existing image ${index + 1}`}>
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* NEW IMAGES */}
                 {imagePreviews.length > 0 && (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {imagePreviews.map((preview, index) => (
@@ -401,9 +448,7 @@ function AdminNewsForm({
               </div>
             </section>
 
-            {/* =====================================================
-                SETTINGS
-            ====================================================== */}
+            {/* SETTINGS */}
             <aside className="order-2 h-fit rounded-2xl border border-blue-100 bg-blue-50/30 p-4 shadow-sm sm:p-5 xl:sticky xl:top-0 xl:bg-white">
               <div className="flex flex-col gap-5">
                 {/* PRIORITY */}
@@ -461,13 +506,26 @@ function AdminNewsForm({
                   <h3 className="text-base font-semibold text-[#16181A]">Publishing</h3>
 
                   <div className="mt-4 flex flex-col gap-4">
-                    <label className="flex cursor-pointer items-start gap-3">
+                    {/* FEATURED NEWS */}
+                    <label
+                      className={`flex items-start gap-3 ${
+                        hasFeatured ? 'cursor-pointer' : 'cursor-not-allowed'
+                      }`}>
                       <Checkbox
-                        checked={isFeatured}
+                        /*
+                         * Always unchecked when there is no featured image.
+                         * The page also resets isFeatured to false in that case.
+                         */
+                        checked={hasFeatured && isFeatured}
                         onCheckedChange={(checked) => {
+                          if (!hasFeatured) {
+                            setIsFeatured(false);
+                            return;
+                          }
+
                           setIsFeatured(Boolean(checked));
                         }}
-                        disabled={saving}
+                        disabled={saving || !hasFeatured}
                         className="mt-0.5"
                       />
 
@@ -477,11 +535,14 @@ function AdminNewsForm({
                         </span>
 
                         <span className="mt-0.5 block text-sm leading-5 text-slate-500">
-                          Show this article as featured news.
+                          {hasFeatured
+                            ? 'Show this article as featured news.'
+                            : 'Add a featured image before marking this news as featured.'}
                         </span>
                       </span>
                     </label>
 
+                    {/* PUBLISH NOW */}
                     <label className="flex cursor-pointer items-start gap-3">
                       <Checkbox
                         checked={isPublished}
@@ -506,50 +567,20 @@ function AdminNewsForm({
                 </div>
 
                 {/* BUTTONS */}
-                {/* BUTTONS */}
                 <div className="border-t border-slate-200 pt-5">
                   <div className="flex flex-col gap-3">
                     <button
                       type="button"
                       onClick={closeModal}
                       disabled={saving}
-                      className="
-        h-12 w-full
-        rounded-xl
-        border border-slate-300
-        bg-white
-        px-4
-        text-sm font-medium
-        text-slate-700
-        transition
-        hover:bg-slate-50
-        active:scale-[0.99]
-        disabled:cursor-not-allowed
-        disabled:opacity-50
-      ">
+                      className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
                       Cancel
                     </button>
 
                     <button
                       type="submit"
                       disabled={saving}
-                      className="
-        flex h-12 w-full
-        items-center justify-center
-        gap-2
-        rounded-xl
-        bg-[#2168CD]
-        px-5
-        text-sm font-semibold
-        text-white
-        shadow-sm
-        transition-all
-        hover:bg-[#1958B2]
-        hover:shadow-md
-        active:scale-[0.99]
-        disabled:cursor-not-allowed
-        disabled:opacity-60
-      ">
+                      className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#2168CD] px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#1958B2] hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60">
                       {saving ? (
                         <>
                           <LoaderCircle className="size-4 animate-spin" />
