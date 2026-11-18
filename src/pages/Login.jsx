@@ -232,7 +232,7 @@ function Login() {
         {/*
             LOGIN COLUMN
          */}
-        <section className="flex items-center justify-center px-4 py-6 sm:px-6 sm:py-8 lg:h-screen lg:px-8 lg:py-0 xl:px-10 2xl:px-12">
+        <section className="flex items-center justify-center px-4 py-6 sm:px-6 sm:py-6 lg:h-screen lg:px-8 lg:py-0 xl:px-10 2xl:px-12">
           <motion.div
             initial={{
               opacity: 0,

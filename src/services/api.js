@@ -16,8 +16,9 @@ let refreshPromise = null;
 /**
  * Refresh the access token.
  *
- * The refresh token is NOT manually provided here.
- * Laravel receives it automatically through the HttpOnly cookie.
+ * The refresh token is stored in an HttpOnly cookie.
+ * The browser sends that cookie automatically because
+ * withCredentials is enabled.
  */
 async function refreshAccessToken() {
   console.log('[AUTH] 🔄 Refresh process started');
@@ -27,6 +28,8 @@ async function refreshAccessToken() {
 
     refreshPromise = api
       .post('/admin/refresh', null, {
+        // Prevent this request from entering the
+        // automatic 401 refresh flow.
         skipAuthRefresh: true,
       })
       .then((response) => {
@@ -68,7 +71,7 @@ async function refreshAccessToken() {
 }
 
 /**
- * Attach access token to protected requests.
+ * Attach the in-memory access token to API requests.
  */
 api.interceptors.request.use(
   (config) => {
@@ -84,12 +87,13 @@ api.interceptors.request.use(
 
     if (token) {
       config.headers = config.headers || {};
+
       config.headers.Authorization = `Bearer ${token}`;
     }
 
     /**
-     * Let Axios/browser create the correct multipart boundary
-     * when sending FormData.
+     * Let Axios/browser automatically create the correct
+     * multipart boundary when sending FormData.
      */
     if (config.data instanceof FormData) {
       delete config.headers?.['Content-Type'];
@@ -105,7 +109,9 @@ api.interceptors.request.use(
 );
 
 /**
- * Handle successful responses.
+ * Handle API responses.
+ *
+ * Only ONE response interceptor is used for authentication.
  */
 api.interceptors.response.use(
   (response) => {
@@ -120,9 +126,6 @@ api.interceptors.response.use(
     return response;
   },
 
-  /**
-   * Handle failed responses.
-   */
   async (error) => {
     const originalRequest = error.config;
 
@@ -137,14 +140,16 @@ api.interceptors.response.use(
     /**
      * Do not refresh when:
      *
-     * 1. The error isn't 401.
-     * 2. The request explicitly disables refresh handling.
-     * 3. This request has already been retried.
+     * 1. There is no original request.
+     * 2. The error is not 401.
+     * 3. The request explicitly disables refresh handling.
+     * 4. The request has already been retried.
      */
     if (
+      !originalRequest ||
       error.response?.status !== 401 ||
-      originalRequest?.skipAuthRefresh ||
-      originalRequest?._retry
+      originalRequest.skipAuthRefresh ||
+      originalRequest._retry
     ) {
       console.log('[AUTH] No refresh attempted for this error');
 
@@ -153,6 +158,10 @@ api.interceptors.response.use(
 
     console.log('[AUTH] ⚠️ Access token rejected with 401');
 
+    /**
+     * Mark the original request so it can never enter
+     * the refresh flow more than once.
+     */
     originalRequest._retry = true;
 
     try {
@@ -171,37 +180,6 @@ api.interceptors.response.use(
       clearAccessToken();
 
       console.log('[AUTH] 🗑️ Access token cleared from memory');
-
-      return Promise.reject(refreshError);
-    }
-  },
-);
-
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (
-      error.response?.status !== 401 ||
-      !originalRequest ||
-      originalRequest.skipAuthRefresh ||
-      originalRequest._retry
-    ) {
-      return Promise.reject(error);
-    }
-
-    originalRequest._retry = true;
-
-    try {
-      const newAccessToken = await refreshAccessToken();
-
-      originalRequest.headers = originalRequest.headers || {};
-      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-      return api(originalRequest);
-    } catch (refreshError) {
-      clearAccessToken();
 
       return Promise.reject(refreshError);
     }

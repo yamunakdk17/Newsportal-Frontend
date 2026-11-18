@@ -9,16 +9,27 @@ let sessionRestorePromise = null;
  *
  * The backend returns the access token in JSON.
  * The refresh token is stored by Laravel as an
- * HttpOnly cookie and is handled automatically
- * by the browser.
+ * HttpOnly cookie.
+ *
+ * Login failures MUST NOT trigger /admin/refresh.
  */
 export async function login(email, password) {
   console.log('[AUTH] 🔐 Login started');
 
-  const response = await api.post('/admin/login', {
-    email,
-    password,
-  });
+  const response = await api.post(
+    '/admin/login',
+    {
+      email,
+      password,
+    },
+    {
+      /**
+       * A failed login must never attempt to refresh
+       * an access token.
+       */
+      skipAuthRefresh: true,
+    },
+  );
 
   console.log('[AUTH] ✅ Login response status:', response.status);
 
@@ -42,8 +53,11 @@ export async function login(email, password) {
 /**
  * Restore an existing admin session.
  *
- * The browser automatically sends the HttpOnly
- * refresh-token cookie to Laravel.
+ * This is normally called when the application starts
+ * and there is no access token in memory.
+ *
+ * Laravel receives the refresh token automatically
+ * through the HttpOnly cookie.
  */
 export function restoreSession() {
   console.log('[AUTH] 🔄 Restoring session...');
@@ -51,6 +65,10 @@ export function restoreSession() {
   if (!sessionRestorePromise) {
     sessionRestorePromise = api
       .post('/admin/refresh', null, {
+        /**
+         * Never allow the refresh request itself
+         * to start another refresh request.
+         */
         skipAuthRefresh: true,
       })
       .then((response) => {
@@ -82,6 +100,8 @@ export function restoreSession() {
       .finally(() => {
         sessionRestorePromise = null;
       });
+  } else {
+    console.log('[AUTH] ⏳ Session restore already running — reusing existing request');
   }
 
   return sessionRestorePromise;
@@ -90,11 +110,8 @@ export function restoreSession() {
 /**
  * Logout the current admin session.
  *
- * The access token is sent automatically by the Axios
- * request interceptor.
- *
- * Refresh handling is disabled for logout because
- * logout should never trigger another refresh request.
+ * Refresh handling is disabled because logout must
+ * never trigger another refresh request.
  */
 export async function logout() {
   console.log('[AUTH] 🚪 Logout started');
@@ -118,9 +135,9 @@ export async function logout() {
 
     throw error;
   } finally {
-    /*
-     * Access token exists only in memory,
-     * so clear it when logout finishes.
+    /**
+     * The access token exists only in memory,
+     * so always remove it after logout.
      */
     clearAccessToken();
 
