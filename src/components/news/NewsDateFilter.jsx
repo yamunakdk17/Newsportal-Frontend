@@ -1,39 +1,11 @@
+import { BikramDatePicker } from '@inicrea/bikram-sambat-react';
 import { CalendarIcon, X } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-
-function formatDateForApi(date) {
-  if (!date) return '';
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-}
-
-function formatDateForDisplay(date) {
-  if (!date) return '';
-
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
+import '@inicrea/bikram-sambat-react/styles.css';
 
 export default function NewsDateFilter({ value = '', onChange }) {
-  const selectedDate = value ? new Date(`${value}T00:00:00`) : undefined;
-
-  const handleDateSelect = (date) => {
-    if (!date) {
-      onChange?.('');
-      return;
-    }
-
-    onChange?.(formatDateForApi(date));
+  const handleDateChange = (date) => {
+    onChange?.(date || '');
   };
 
   const clearDate = (event) => {
@@ -42,44 +14,36 @@ export default function NewsDateFilter({ value = '', onChange }) {
   };
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" className="h-10 min-w-[190px] justify-between gap-2">
-          <span className="flex min-w-0 items-center gap-2">
-            <CalendarIcon className="h-4 w-4 shrink-0" />
+    <div className="news-date-filter flex items-center gap-2">
+      <div className="relative min-w-[210px]">
+        <CalendarIcon className="pointer-events-none absolute left-4 top-1/2 z-10 size-4 -translate-y-1/2 text-[#164B99]" />
 
-            <span className="truncate">
-              {selectedDate ? formatDateForDisplay(selectedDate) : 'Filter by date'}
-            </span>
-          </span>
-
-          {selectedDate && (
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label="Clear selected date"
-              className="ml-1 rounded-sm p-0.5 hover:bg-muted"
-              onClick={clearDate}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  clearDate(event);
-                }
-              }}>
-              <X className="h-4 w-4" />
-            </span>
-          )}
-        </Button>
-      </PopoverTrigger>
-
-      <PopoverContent align="end" className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={handleDateSelect}
-          initialFocus
+        <BikramDatePicker
+          value={value}
+          onChange={handleDateChange}
+          valueFormat="AD"
+          locale="ne"
+          format="YYYY MMMM DD, dddd"
+          weekStartsOn={0}
+          closeOnSelect
+          editable={false}
+          classNames={{
+            input:
+              "h-10 w-full rounded-md border border-[#164B99] bg-white pl-10 pr-3 font-['Mukta',sans-serif] text-sm font-medium text-[#164B99] outline-none transition hover:bg-[#F3F7FC] focus:border-[#164B99] focus:ring-2 focus:ring-[#164B99]/10",
+            popover: 'z-[60]',
+          }}
         />
-      </PopoverContent>
-    </Popover>
+      </div>
+
+      {value && (
+        <button
+          type="button"
+          onClick={clearDate}
+          aria-label="मिति हटाउनुहोस्"
+          className="flex size-9 shrink-0 items-center justify-center rounded-md text-[#164B99] transition hover:bg-[#F3F7FC] hover:text-[#164B99]">
+          <X className="size-4" />
+        </button>
+      )}
+    </div>
   );
 }

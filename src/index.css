@@ -172,6 +172,24 @@
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
+
+/* Keep the Bikram date picker on the category page in the site's blue palette. */
+.news-date-filter .bikram-picker,
+.news-date-filter .bikram {
+  --bikram-accent: #164B99;
+  --bikram-accent-contrast: #ffffff;
+  --bikram-bg: #ffffff;
+  --bikram-fg: #164B99;
+  --bikram-muted: #164B99;
+  --bikram-border: #164B99;
+  --bikram-hover: #F3F7FC;
+  --bikram-weekend: #164B99;
+  --bikram-shadow: 0 10px 25px -5px rgb(22 75 153 / 0.15), 0 4px 10px -6px rgb(22 75 153 / 0.1);
+}
+
+.news-date-filter .bikram-picker__trigger {
+  color: #164B99;
+}
 @theme {
   --font-geist: 'Geist', sans-serif;
 }

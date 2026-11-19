@@ -327,10 +327,6 @@ function AdminNewsForm({
                       aria-label="Remove new featured image">
                       <X className="size-4" />
                     </button>
-
-                    <div className="absolute bottom-2 left-2 rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white">
-                      New image
-                    </div>
                   </div>
                 )}
 
