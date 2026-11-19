@@ -59,7 +59,7 @@ export default function CategoryBar({
      * Keep sending the complete object to the parent
      * when onCategorySelect is provided.
      */
-    if (category?.id !== null && category?.id !== undefined) {
+    if ((category?.id !== null && category?.id !== undefined) || category?.slug) {
       if (onCategorySelect) {
         onCategorySelect(category);
         return;
@@ -87,7 +87,7 @@ export default function CategoryBar({
        * so it can be displayed even when the API returns
        * zero news articles.
        */
-      navigate(`/category/${category.id}`, {
+      navigate(`/category/${category.id ?? category.slug}`, {
         state: {
           categoryName: category.name || 'Category',
           categorySlug: category.slug || '',
