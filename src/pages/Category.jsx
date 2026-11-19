@@ -89,8 +89,7 @@ function StoryRow({ story, index, variants, onSelect }) {
 
   const date = formatNepaliDate(story?.published_at || story?.created_at);
 
-  const description = story?.excerpt || story?.caption;
-
+  const description = story?.excerpt || '';
   return (
     <motion.article
       variants={variants}
@@ -145,56 +144,48 @@ function StoryRow({ story, index, variants, onSelect }) {
       </AspectRatio>
 
       <div className="flex min-w-0 flex-col items-start gap-4 font-['Mukta',sans-serif] tracking-[0.002em] sm:gap-5 lg:gap-6">
-        <div className="flex w-full flex-col items-start gap-2.5 sm:gap-3">
-          <h2
-            className="
-              line-clamp-3
-              w-full
-              text-lg
-              font-bold
-              leading-[1.35]
-              text-[#16181A]
-              transition-colors
-              group-hover:text-[#164B99]
-              sm:text-xl
-              md:text-[22px]
-              lg:text-[24px]
-              xl:text-[26px]
-            ">
-            {story.title}
-          </h2>
-
-          {date && (
-            <div className="flex items-center gap-1.5 text-sm leading-6 text-[#555B63] sm:text-[15px] lg:text-base">
-              <CalendarDays className="size-4 shrink-0 text-[#164B99]" />
-
-              <span>{date}</span>
-            </div>
-          )}
-
-          {story.author && (
-            <p className="text-sm leading-6 text-[#555B63] sm:text-[15px] lg:text-base">
-              {story.author}
-            </p>
-          )}
-        </div>
+        <h2
+          className="
+      line-clamp-3
+      w-full
+      text-lg
+      font-bold
+      leading-[1.35]
+      text-[#16181A]
+      transition-colors
+      group-hover:text-[#164B99]
+      sm:text-xl
+      md:text-[22px]
+      lg:text-[24px]
+      xl:text-[26px]
+    ">
+          {story.title}
+        </h2>
 
         {description && (
           <p
             className="
-              line-clamp-3
-              w-full
-              text-sm
-              leading-6
-              text-[#4A4E54]
-              sm:text-[15px]
-              sm:leading-7
-              lg:text-base
-              lg:leading-7
-              xl:text-[17px]
-            ">
+        line-clamp-4
+        w-full
+        overflow-hidden
+        text-sm
+        leading-6
+        text-[#4A4E54]
+        sm:text-[15px]
+        sm:leading-7
+        lg:text-base
+        lg:leading-7
+        xl:text-[17px]
+      ">
             {description}
           </p>
+        )}
+
+        {date && (
+          <div className="flex items-center gap-1.5 text-sm leading-6 text-[#555B63] sm:text-[15px] lg:text-base">
+            <CalendarDays className="size-4 shrink-0 text-[#164B99]" />
+            <span>{date}</span>
+          </div>
         )}
       </div>
     </motion.article>
