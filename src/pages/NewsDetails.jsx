@@ -17,17 +17,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getImageUrl } from '@/lib/getImageUrl';
 import { formatNepaliDate } from '@/lib/nepaliDate';
 
-/**
- * Route:
- * /news/:slug
- *
- * Backend:
- * GET /api/news/{slug}
- */
-
-/*
- * Get main image and gallery images.
- */
 const getImages = (item) => {
   const all = (item?.images || [])
     .map((img) => getImageUrl(typeof img === 'string' ? img : img?.url || img?.path))
@@ -41,16 +30,35 @@ const getImages = (item) => {
   };
 };
 
-/*
- * Convert news body into paragraphs.
- */
 const getParagraphs = (item) => {
   const raw = item?.content ?? item?.body ?? item?.description ?? '';
 
-  return String(raw)
-    .replace(/\r\n/g, '\n')
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.replace(/\s*\n\s*/g, ' ').trim())
+  if (!raw) return [];
+
+  const content = String(raw).replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+
+  if (!content) return [];
+
+  const containsHtml = /<\/?(p|br)\b/i.test(content);
+
+  if (containsHtml) {
+    return content
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<p[^>]*>/gi, '')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .split(/\n+/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean);
+  }
+
+  return content
+    .split(/\n+/)
+    .map((paragraph) => paragraph.trim())
     .filter(Boolean);
 };
 
@@ -64,9 +72,6 @@ function NewsDetails() {
   const [error, setError] = useState('');
   const [preview, setPreview] = useState('');
 
-  /*
-   * Fetch news details from backend.
-   */
   useEffect(() => {
     const fetchNewsDetails = async () => {
       try {
@@ -77,9 +82,6 @@ function NewsDetails() {
 
         console.log('News details:', response.data);
 
-        /*
-         * Check backend success response.
-         */
         if (!response.data?.success) {
           setError(response.data?.message || 'News not found.');
 
@@ -87,9 +89,6 @@ function NewsDetails() {
           return;
         }
 
-        /*
-         * Store complete news object.
-         */
         setArticle(response.data.data || null);
 
         if (!response.data.data) {
@@ -106,17 +105,11 @@ function NewsDetails() {
       }
     };
 
-    /*
-     * Only call API when slug exists.
-     */
     if (slug) {
       fetchNewsDetails();
     }
   }, [slug]);
 
-  /*
-   * Scroll to top when opening another article.
-   */
   useEffect(() => {
     window.scrollTo({
       top: 0,
@@ -126,9 +119,6 @@ function NewsDetails() {
     setPreview('');
   }, [slug]);
 
-  /*
-   * Close image preview with Escape key.
-   */
   useEffect(() => {
     if (!preview) return;
 
@@ -145,9 +135,6 @@ function NewsDetails() {
     };
   }, [preview]);
 
-  /*
-   * Animation helper.
-   */
   const fadeUp = (delay = 0) => ({
     initial: reduce
       ? false
@@ -168,19 +155,10 @@ function NewsDetails() {
     },
   });
 
-  /*
-   * Images from backend.
-   */
   const { main: image, gallery } = getImages(article);
 
-  /*
-   * News body paragraphs.
-   */
   const paragraphs = getParagraphs(article);
 
-  /*
-   * Nepali published date.
-   */
   const publishedDate = formatNepaliDate(article?.published_at);
 
   return (
@@ -188,9 +166,6 @@ function NewsDetails() {
       <Header />
 
       <main className="mx-auto w-full max-w-[1920px] px-4 pt-8 pb-10 sm:px-6 sm:pt-10 md:px-10 lg:px-16 xl:px-[180px] xl:pt-12 xl:pb-20">
-        {/* =========================
-            LOADING
-        ========================== */}
         {loading && (
           <div className="flex flex-col items-center gap-6 pt-6 sm:pt-10">
             <Skeleton className="h-10 w-40 rounded-none sm:h-14 xl:h-[84px] xl:w-[191px]" />
@@ -203,9 +178,6 @@ function NewsDetails() {
           </div>
         )}
 
-        {/* =========================
-            ERROR / NOT FOUND
-        ========================== */}
         {!loading && (error || !article) && (
           <div className="flex flex-col items-center gap-4 py-20 text-center">
             <p className="font-['Mukta',sans-serif] text-lg text-red-500 sm:text-xl">
@@ -219,14 +191,8 @@ function NewsDetails() {
           </div>
         )}
 
-        {/* =========================
-            ARTICLE
-        ========================== */}
         {!loading && !error && article && (
           <article className="flex w-full flex-col items-center gap-6 font-['Mukta',sans-serif] sm:gap-7 lg:gap-8 xl:gap-9">
-            {/* =====================
-                  CATEGORY
-            ====================== */}
             {article.category?.name && (
               <motion.div
                 {...fadeUp(0)}
@@ -238,15 +204,10 @@ function NewsDetails() {
             )}
 
             <div className="flex w-full flex-col items-center gap-6 sm:gap-8 xl:gap-6">
-              {/* =====================
-                    HERO BLOCK
-              ====================== */}
               <div className="flex w-full flex-col items-center gap-2">
-                {/* Date + Author */}
                 <motion.div
                   {...fadeUp(0.1)}
                   className="flex w-full items-center justify-between gap-6 border-b border-[#E5E7EB] pb-2 text-xs leading-5 tracking-[0.002em] text-[#6B7280] sm:text-sm">
-                  {/* LEFT: Nepali Date */}
                   <div className="flex min-w-0 items-center gap-2">
                     <CalendarDays
                       className="h-4 w-4 shrink-0"
@@ -257,14 +218,12 @@ function NewsDetails() {
                     <span className="whitespace-nowrap">{publishedDate}</span>
                   </div>
 
-                  {/* RIGHT: Author */}
                   {article.author && (
                     <span className="min-w-0 truncate text-right">{article.author}</span>
                   )}
                 </motion.div>
 
                 <div className="flex w-full max-w-[1200px] flex-col items-start gap-4 sm:gap-5">
-                  {/* Featured Image */}
                   {image && (
                     <motion.div {...fadeUp(0.15)} className="w-full">
                       <AspectRatio
@@ -279,7 +238,6 @@ function NewsDetails() {
                     </motion.div>
                   )}
 
-                  {/* Gallery Images */}
                   {gallery.length > 0 && (
                     <motion.ul
                       {...fadeUp(0.2)}
@@ -307,36 +265,31 @@ function NewsDetails() {
                     </motion.ul>
                   )}
 
-                  {/* Title */}
+                  {article.caption && (
+                    <motion.p
+                      {...fadeUp(0.25)}
+                      className="w-full text-start text-sm font-normal leading-[1.6] tracking-[0.002em] text-[#6B7280] sm:text-base md:text-lg xl:text-xl">
+                      {article.caption}
+                    </motion.p>
+                  )}
+
                   <motion.h1
                     {...fadeUp(0.2)}
                     className="w-full text-left text-xl font-bold leading-[1.35] tracking-[-0.01em] text-[#16181A] sm:text-2xl md:text-3xl lg:text-4xl xl:text-[40px] xl:leading-[1.25]">
                     {article.title}
                   </motion.h1>
-
-                  {/* Caption */}
-                  {article.caption && (
-                    <motion.p
-                      {...fadeUp(0.25)}
-                      className="w-full text-center text-sm font-normal leading-[1.6] tracking-[0.002em] text-[#6B7280] sm:text-base md:text-lg xl:text-xl">
-                      {article.caption}
-                    </motion.p>
-                  )}
                 </div>
               </div>
 
-              {/* =====================
-                    BODY
-              ====================== */}
               {paragraphs.length > 0 && (
                 <motion.div
                   {...fadeUp(0.3)}
                   className="flex w-full justify-center pt-0 pb-3 sm:pt-1 sm:pb-4 lg:pt-1 lg:pb-5 xl:pt-1 xl:pb-6">
-                  <div className="flex w-full max-w-[1200px] flex-col gap-4 sm:gap-5 lg:gap-6">
+                  <div className="flex w-full max-w-[1200px] flex-col gap-5 sm:gap-6 lg:gap-7">
                     {paragraphs.map((text, index) => (
                       <p
                         key={index}
-                        className="w-full text-left text-base font-normal leading-[1.75] tracking-normal text-[#333333] sm:text-[17px] md:text-lg lg:text-lg xl:text-[19px]">
+                        className="w-full max-w-full whitespace-normal break-words break-all text-left text-base font-normal leading-[1.85] tracking-normal text-[#333333] sm:text-[17px] md:text-lg lg:text-lg xl:text-[19px]">
                         {text}
                       </p>
                     ))}
@@ -348,9 +301,6 @@ function NewsDetails() {
         )}
       </main>
 
-      {/* =========================
-          IMAGE PREVIEW
-      ========================== */}
       {preview && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4"

@@ -238,6 +238,7 @@
 // }
 
 // export default NewsSection;
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays } from 'lucide-react';
@@ -247,11 +248,12 @@ import { getNewsList, isPublishedNews } from '@/lib/news';
 import { getImageUrl } from '@/lib/getImageUrl';
 import { formatNepaliDate } from '@/lib/nepaliDate';
 
-// Text sizes in one place.
 const SIZE = {
   sectionTitle: 'text-xl sm:text-2xl lg:text-3xl 2xl:text-4xl',
   mainTitle: 'text-base sm:text-lg lg:text-xl 2xl:text-2xl',
+  mainExcerpt: 'text-sm sm:text-base lg:text-lg',
   sideTitle: 'text-sm sm:text-base xl:text-lg 2xl:text-xl',
+  sideExcerpt: 'text-xs sm:text-sm xl:text-base',
   date: 'text-xs sm:text-sm',
 };
 
@@ -264,6 +266,7 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
 
   useEffect(() => {
     if (Array.isArray(newsData)) {
+      setLoading(false);
       return;
     }
 
@@ -331,7 +334,6 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
     }
   };
 
-  // Click and keyboard behaviour shared by the big story and the small ones.
   const linkProps = (item) => ({
     role: item.slug ? 'link' : undefined,
     tabIndex: item.slug ? 0 : undefined,
@@ -376,23 +378,21 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
       <section className="flex w-full flex-col gap-2 border-t border-[#16181A] py-2 font-['Mukta',sans-serif] text-[#16181A]">
         <h2 className={`font-bold leading-[1.2] tracking-[0.002em] ${SIZE.sectionTitle}`}>
           {selectedCategory === 'All'
-            ? ' News'
+            ? 'News'
             : selectedCategory?.name || selectedCategory}
         </h2>
 
-        {/* Big story 972 : small stories 683, 16px apart on mobile, 24px on desktop */}
         <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[972fr_683fr] lg:gap-6">
-          {/* LARGE NEWS */}
           <article
             {...linkProps(mainNews)}
-            className={`group flex min-w-0 flex-col gap-2 border-t border-[#979EA9] py-2 ${
+            className={`group flex min-w-0 flex-col border-t border-[#979EA9] pt-2 ${
               mainNews.slug ? 'cursor-pointer' : ''
             }`}>
             <div className="aspect-[972/540] w-full overflow-hidden bg-[#DDE0E3]">
               {getImageurl(mainNews) ? (
                 <img
                   src={getImageurl(mainNews)}
-                  alt={mainNews.title}
+                  alt={mainNews.title || ''}
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                 />
@@ -404,36 +404,44 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
             </div>
 
             <h3
-              className={`line-clamp-2 font-bold leading-[1.2] tracking-[0.002em] ${SIZE.mainTitle}`}>
+              className={`mt-2 line-clamp-2 font-bold leading-[1.2] tracking-[0.002em] ${SIZE.mainTitle}`}>
               {mainNews.title}
             </h3>
 
+            {mainNews.excerpt && (
+              <p
+                className={`mt-1.5 line-clamp-3 overflow-hidden font-normal leading-[1.5] text-[#4A4E54] ${SIZE.mainExcerpt}`}>
+                {mainNews.excerpt}
+              </p>
+            )}
+
             <div
-              className={`flex items-center gap-1.5 font-normal text-[#979EA9] ${SIZE.date}`}>
+              className={`mt-2 flex items-center gap-1.5 font-normal text-[#979EA9] ${SIZE.date}`}>
               <CalendarDays
                 className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4"
                 strokeWidth={1.8}
                 aria-hidden="true"
               />
 
-              <span>{formatNepaliDate(mainNews.published_at)}</span>
+              <span>
+                {formatNepaliDate(mainNews.published_at || mainNews.created_at)}
+              </span>
             </div>
           </article>
 
-          {/* SMALL NEWS */}
           <div className="flex min-w-0 flex-col gap-3 lg:gap-4">
             {sideNews.map((item, index) => (
               <article
                 key={item.id || item.slug || index}
                 {...linkProps(item)}
-                className={`group flex min-w-0 items-start gap-3 border-t border-[#979EA9] py-2 sm:gap-4 ${
+                className={`group flex min-w-0 items-start gap-3 border-t border-[#979EA9] pt-2 sm:gap-4 ${
                   item.slug ? 'cursor-pointer' : ''
                 }`}>
                 <div className="aspect-[260/200] w-[38%] shrink-0 overflow-hidden bg-[#DDE0E3]">
                   {getImageurl(item) ? (
                     <img
                       src={getImageurl(item)}
-                      alt={item.title}
+                      alt={item.title || ''}
                       loading="lazy"
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                     />
@@ -446,19 +454,26 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
 
                 <div className="min-w-0 flex-1">
                   <h3
-                    className={`line-clamp-3 font-bold leading-[1.2] tracking-[0.002em] ${SIZE.sideTitle}`}>
+                    className={`line-clamp-2 font-bold leading-[1.2] tracking-[0.002em] ${SIZE.sideTitle}`}>
                     {item.title}
                   </h3>
 
+                  {item.excerpt && (
+                    <p
+                      className={`mt-1.5 line-clamp-3 overflow-hidden font-normal leading-[1.45] text-[#4A4E54] ${SIZE.sideExcerpt}`}>
+                      {item.excerpt}
+                    </p>
+                  )}
+
                   <div
-                    className={`mt-1.5 flex items-center gap-1.5 font-normal text-[#979EA9] ${SIZE.date}`}>
+                    className={`mt-2 flex items-center gap-1.5 font-normal text-[#979EA9] ${SIZE.date}`}>
                     <CalendarDays
                       className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4"
                       strokeWidth={1.8}
                       aria-hidden="true"
                     />
 
-                    <span>{formatNepaliDate(item.published_at)}</span>
+                    <span>{formatNepaliDate(item.published_at || item.created_at)}</span>
                   </div>
                 </div>
               </article>

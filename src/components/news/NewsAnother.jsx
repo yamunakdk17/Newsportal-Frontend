@@ -251,38 +251,20 @@ import { getNewsList, isPublishedNews } from '@/lib/news';
 import { getImageUrl } from '@/lib/getImageUrl';
 import { formatNepaliDate } from '@/lib/nepaliDate';
 
-/*
- * News title styling
- */
 const titleClass =
-  "font-['Mukta',sans-serif] text-base font-semibold leading-[1.2] tracking-[0.002em] text-black transition-colors group-hover:underline underline-offset-4 sm:text-lg xl:text-xl 2xl:text-[22px]";
+  "font-['Mukta',sans-serif] font-bold leading-[1.2] tracking-[0.002em] text-black transition-colors group-hover:underline underline-offset-4";
 
-/*
- * Fixed title boxes (line-height is 1.2, so 3 lines = 3.6em, 2 lines = 2.4em).
- * The height is reserved even for short titles, so every card in a row
- * has the same height and the images never shift. Long titles end with "...".
- */
-const SIDE_TITLE_CLAMP = 'line-clamp-3 min-h-[3.6em]';
-const MAIN_TITLE_CLAMP = 'line-clamp-2 min-h-[2.4em]';
+const excerptClass =
+  "font-['Mukta',sans-serif] font-normal leading-[1.45] tracking-[0.002em] text-[#4A4E54]";
 
-/*
- * Date styling
- *
- * Left aligned, fixed height so the position never changes.
- */
+const SIDE_TITLE_CLAMP = 'line-clamp-3';
+const MAIN_TITLE_CLAMP = 'line-clamp-2';
+
 const dateClass =
-  "flex h-5 w-fit items-center justify-start gap-1.5 font-['Mukta',sans-serif] text-[13px] font-medium text-[#6B7280] sm:text-sm";
+  "flex min-h-5 w-fit items-center justify-start gap-1.5 font-['Mukta',sans-serif] text-[13px] font-normal text-[#6B7280] sm:text-sm";
 
-/*
- * Story date
- *
- * Prefer published date, then fall back to created date.
- */
 const getStoryDate = (story) => story?.published_at || story?.created_at || null;
 
-/*
- * News card
- */
 function Card({
   story,
   ratio,
@@ -291,9 +273,12 @@ function Card({
   onSelect,
   className = '',
   titleClamp = SIDE_TITLE_CLAMP,
+  isMain = false,
 }) {
   const src = getImageUrl(story);
-  const date = formatNepaliDate(getStoryDate(story));
+  const storyDate = getStoryDate(story);
+  const date = formatNepaliDate(storyDate);
+  const excerpt = story?.excerpt || '';
 
   return (
     <motion.article
@@ -308,7 +293,7 @@ function Card({
           onSelect(story);
         }
       }}
-      className={`group flex w-full cursor-pointer flex-col items-start gap-[10px] outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 ${className}`}>
+      className={`group flex w-full cursor-pointer flex-col items-start outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 ${className}`}>
       <AspectRatio ratio={ratio} className="w-full overflow-hidden bg-[#DDE0E3]">
         {src ? (
           <img
@@ -324,17 +309,40 @@ function Card({
         )}
       </AspectRatio>
 
-      <h3 className={`${titleClass} ${titleClamp}`}>{story.title}</h3>
+      <div className="mt-3 w-full">
+        <h3
+          className={`${titleClass} ${titleClamp} ${
+            isMain
+              ? 'text-base sm:text-lg xl:text-xl 2xl:text-[22px]'
+              : 'text-base sm:text-lg xl:text-xl 2xl:text-[22px]'
+          }`}>
+          {story.title}
+        </h3>
 
-      {/* Date row is always rendered so the card height stays the same */}
-      <div className={dateClass}>
-        {date && (
-          <>
-            <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
-
-            <time dateTime={getStoryDate(story)}>{date}</time>
-          </>
+        {excerpt && (
+          <p
+            className={`mt-2 line-clamp-3 w-full overflow-hidden text-justify text-sm sm:text-base ${
+              isMain ? 'xl:text-lg' : 'xl:text-base'
+            } ${excerptClass}`}>
+            {excerpt}
+          </p>
         )}
+
+        <div className="mt-2">
+          <div className={dateClass}>
+            {date && (
+              <>
+                <CalendarDays
+                  className="h-4 w-4 shrink-0"
+                  strokeWidth={1.8}
+                  aria-hidden="true"
+                />
+
+                <time dateTime={storyDate}>{date}</time>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </motion.article>
   );
@@ -346,11 +354,9 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  /*
-   * Fetch news from backend
-   */
   useEffect(() => {
     if (Array.isArray(newsData)) {
+      setLoading(false);
       return;
     }
 
@@ -377,16 +383,11 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
     fetchNews();
   }, [newsData]);
 
-  /*
-   * Backend image URL
-   */
   const getImageurl = (item) => getImageUrl(item?.featured_image || item?.images?.[0]);
 
-  /*
-   * Animation
-   */
   const container = {
     hidden: {},
+
     show: {
       transition: {
         staggerChildren: reduce ? 0 : 0.12,
@@ -403,6 +404,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
     show: {
       opacity: 1,
       y: 0,
+
       transition: {
         duration: 0.5,
         ease: 'easeOut',
@@ -410,16 +412,9 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
     },
   };
 
-  /*
-   * Figma "Newspost": 402 | 828 | 402
-   * Side stories vertically centred against the big one.
-   */
   const gridClass =
     'mx-auto grid w-full max-w-[1680px] grid-cols-1 items-start gap-6 md:grid-cols-2 lg:grid-cols-[402fr_828fr_402fr] lg:items-center';
 
-  /*
-   * Loading UI
-   */
   if (!Array.isArray(newsData) && loading) {
     return (
       <div className={gridClass}>
@@ -453,7 +448,6 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
         amount: 0.15,
       }}
       className={gridClass}>
-      {/* LEFT CARD */}
       {left && (
         <Card
           story={left}
@@ -466,7 +460,6 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
         />
       )}
 
-      {/* MAIN CENTRE CARD */}
       <Card
         story={main}
         ratio={828 / 532}
@@ -474,10 +467,10 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
         getImageUrl={getImageurl}
         onSelect={onSelect}
         titleClamp={MAIN_TITLE_CLAMP}
+        isMain
         className="order-first md:order-none md:col-span-2 md:col-start-1 md:row-start-1 lg:col-span-1 lg:col-start-2"
       />
 
-      {/* RIGHT CARD */}
       {right && (
         <Card
           story={right}
