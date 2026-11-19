@@ -7,6 +7,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
+import { getNewsList, isPublishedNews } from '@/lib/news';
 import { getImageUrl } from '@/lib/getImageUrl';
 import { formatNepaliDate } from '@/lib/nepaliDate';
 
@@ -119,7 +120,7 @@ function TrendingCard({ story, variants, getImageUrl, onSelect }) {
   );
 }
 
-export default function Trending({ title = 'Trending News', onSelect }) {
+export default function Trending({ title = 'Trending News', onSelect, newsData }) {
   const reduce = useReducedMotion();
   const navigate = useNavigate();
 
@@ -127,6 +128,21 @@ export default function Trending({ title = 'Trending News', onSelect }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (Array.isArray(newsData)) {
+      const priorityNews = newsData
+        .filter(isPublishedNews)
+        .sort((a, b) => {
+          const priorityOrder = { high: 1, medium: 2, low: 3 };
+          const priorityA = priorityOrder[String(a.priority || '').toLowerCase()] ?? 999;
+          const priorityB = priorityOrder[String(b.priority || '').toLowerCase()] ?? 999;
+          return priorityA - priorityB;
+        });
+
+      setNews(priorityNews.slice(0, 4));
+      setLoading(false);
+      return;
+    }
+
     const fetchTrendingNews = async () => {
       try {
         setLoading(true);
@@ -138,7 +154,7 @@ export default function Trending({ title = 'Trending News', onSelect }) {
           },
         });
 
-        const newsData = Array.isArray(response.data?.data) ? response.data.data : [];
+        const fetchedNews = getNewsList(response).filter(isPublishedNews);
 
         const priorityOrder = {
           high: 1,
@@ -146,7 +162,7 @@ export default function Trending({ title = 'Trending News', onSelect }) {
           low: 3,
         };
 
-        const priorityNews = [...newsData].sort((a, b) => {
+        const priorityNews = [...fetchedNews].sort((a, b) => {
           const priorityA = priorityOrder[String(a.priority || '').toLowerCase()] ?? 999;
 
           const priorityB = priorityOrder[String(b.priority || '').toLowerCase()] ?? 999;
@@ -165,7 +181,7 @@ export default function Trending({ title = 'Trending News', onSelect }) {
     };
 
     fetchTrendingNews();
-  }, []);
+  }, [newsData]);
 
   const getImageurl = (item) => getImageUrl(item?.featured_image || item?.images?.[0]);
 

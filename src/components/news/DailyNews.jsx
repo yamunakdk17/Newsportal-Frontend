@@ -100,7 +100,7 @@ function buildLayout(k) {
   };
 }
 
-export default function DailyNews({ title = 'Daily Updates' }) {
+export default function DailyNews({ title = 'Daily Updates', newsData }) {
   const reduce = useReducedMotion();
   const navigate = useNavigate();
   const maxLevels = useMaxSideLevels();
@@ -115,6 +115,13 @@ export default function DailyNews({ title = 'Daily Updates' }) {
    * FETCH NEWS FROM BACKEND
    */
   useEffect(() => {
+    if (Array.isArray(newsData)) {
+      setNews(newsData);
+      setError('');
+      setLoading(false);
+      return;
+    }
+
     const fetchNews = async () => {
       try {
         console.log('Fetching daily news from backend...');
@@ -159,7 +166,7 @@ export default function DailyNews({ title = 'Daily Updates' }) {
     };
 
     fetchNews();
-  }, []);
+  }, [newsData]);
 
   /*
    * Keep active index valid when API data changes.

@@ -24,12 +24,69 @@ const isSuperAdmin = (member) => normalizeRole(member.role) === 'superadmin';
 
 const roleLabel = (member) => (isSuperAdmin(member) ? 'Super-Admin' : 'Admin');
 
+const firstErrorString = (value) => {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const message = firstErrorString(item);
+      if (message) return message;
+    }
+  }
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) {
+      const message = firstErrorString(item);
+      if (message) return message;
+    }
+  }
+  return '';
+};
+
+const getApiErrorMessage = (err, fallback) => {
+  const data = err?.response?.data;
+  const errorMessage = firstErrorString(err?.message);
+
+  return (
+    firstErrorString(data?.message) ||
+    firstErrorString(data?.error) ||
+    firstErrorString(data?.errors) ||
+    firstErrorString(typeof data === 'string' ? data : '') ||
+    (errorMessage && !/^request failed with status code \d+$/i.test(errorMessage)
+      ? errorMessage
+      : '') ||
+    fallback
+  );
+};
+
 function getInitialForm() {
   return {
     name: '',
     email: '',
     password: '',
   };
+}
+
+function NotificationToast({ notification, reduce }) {
+  return (
+    <AnimatePresence>
+      {notification.message && (
+        <motion.div
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 6 }}
+          transition={{ duration: 0.16, ease: 'easeOut' }}
+          className={`flex w-full items-start justify-between gap-3 rounded-xl border bg-white px-3 py-2 shadow-sm ${
+            notification.type === 'error'
+              ? 'border-red-200 border-l-4 border-l-[#F5365C]'
+              : 'border-[#EEF0F2]'
+          }`}>
+          <p role="alert" className="pt-0.5 text-xs font-medium leading-[1.4] text-[#981733]">
+            {notification.message}
+          </p>
+
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }
 
 export default function Team() {
@@ -40,6 +97,7 @@ export default function Team() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [error, setError] = useState('');
+  const [notification, setNotification] = useState({ type: 'error', message: '' });
   const [query, setQuery] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -53,6 +111,21 @@ export default function Team() {
   // DELETE CONFIRMATION MODAL
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState(null);
+
+  const showErrorNotification = (message) => {
+    setNotification({ type: 'error', message });
+  };
+
+  const clearNotification = () => {
+    setNotification({ type: 'error', message: '' });
+  };
+
+  useEffect(() => {
+    if (!notification.message) return undefined;
+
+    const timeout = window.setTimeout(clearNotification, 5000);
+    return () => window.clearTimeout(timeout);
+  }, [notification]);
   const fetchMembers = async ({ showLoader = true } = {}) => {
     try {
       if (!showLoader) {
@@ -73,9 +146,7 @@ export default function Team() {
     } catch (err) {
       console.error('Failed to fetch admins:', err);
 
-      setError(
-        err.response?.data?.message || err.message || 'Unable to load team members.',
-      );
+      setError(getApiErrorMessage(err, 'Unable to load team members.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -91,6 +162,7 @@ export default function Team() {
     setSelectedMember(null);
     setForm(getInitialForm());
     setError('');
+    clearNotification();
     setModalOpen(true);
   };
 
@@ -105,6 +177,7 @@ export default function Team() {
     });
 
     setError('');
+    clearNotification();
     setModalOpen(true);
   };
 
@@ -114,6 +187,7 @@ export default function Team() {
     setModalOpen(false);
     setSelectedMember(null);
     setForm(getInitialForm());
+    clearNotification();
   };
 
   const handleChange = (event) => {
@@ -129,23 +203,24 @@ export default function Team() {
     event.preventDefault();
 
     if (!form.name.trim()) {
-      setError('Name is required.');
+      showErrorNotification('Name is required.');
       return;
     }
 
     if (!form.email.trim()) {
-      setError('Email is required.');
+      showErrorNotification('Email is required.');
       return;
     }
 
     if (modalMode === 'create' && !form.password.trim()) {
-      setError('Password is required.');
+      showErrorNotification('Password is required.');
       return;
     }
 
     try {
       setSaving(true);
       setError('');
+      clearNotification();
 
       if (modalMode === 'create') {
         const payload = {
@@ -176,6 +251,7 @@ export default function Team() {
       setModalOpen(false);
       setSelectedMember(null);
       setForm(getInitialForm());
+      clearNotification();
 
       await fetchMembers({
         showLoader: false,
@@ -183,10 +259,11 @@ export default function Team() {
     } catch (err) {
       console.error('Save admin error:', err);
 
-      setError(
-        err.response?.data?.message ||
-          err.message ||
+      showErrorNotification(
+        getApiErrorMessage(
+          err,
           `Unable to ${modalMode === 'create' ? 'create' : 'update'} admin.`,
+        ),
       );
     } finally {
       setSaving(false);
@@ -196,11 +273,12 @@ export default function Team() {
   // OPEN DELETE CONFIRMATION
   const openDeleteConfirmation = (member) => {
     if (isSuperAdmin(member)) {
-      setError('Super Admin cannot be deleted.');
+      showErrorNotification('Super Admin cannot be deleted.');
       return;
     }
 
     setError('');
+    clearNotification();
     setMemberToDelete(member);
     setDeleteConfirmOpen(true);
   };
@@ -211,6 +289,7 @@ export default function Team() {
 
     setDeleteConfirmOpen(false);
     setMemberToDelete(null);
+    clearNotification();
   };
 
   // CONFIRM DELETE
@@ -218,13 +297,14 @@ export default function Team() {
     if (!memberToDelete) return;
 
     if (isSuperAdmin(memberToDelete)) {
-      setError('Super Admin cannot be deleted.');
+      showErrorNotification('Super Admin cannot be deleted.');
       return;
     }
 
     try {
       setDeletingId(memberToDelete.id);
       setError('');
+      clearNotification();
 
       const response = await api.delete(`/admin/admins/${memberToDelete.id}`);
 
@@ -233,6 +313,7 @@ export default function Team() {
       // Close confirmation after successful deletion.
       setDeleteConfirmOpen(false);
       setMemberToDelete(null);
+      clearNotification();
 
       // Backend remains the source of truth.
       // Fetch the latest admin list.
@@ -242,7 +323,7 @@ export default function Team() {
     } catch (err) {
       console.error('Delete admin error:', err);
 
-      setError(err.response?.data?.message || err.message || 'Unable to delete member.');
+      showErrorNotification(getApiErrorMessage(err, 'Unable to delete member.'));
     } finally {
       setDeletingId(null);
     }
@@ -660,6 +741,11 @@ export default function Team() {
                     />
                   </div>
 
+                  <NotificationToast
+                    notification={notification}
+                    reduce={reduce}
+                  />
+
                   {/* FORM ACTIONS */}
                   <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                     <Button
@@ -685,6 +771,7 @@ export default function Team() {
                     </Button>
                   </div>
                 </form>
+
               </div>
             </motion.div>
           </>
@@ -783,11 +870,17 @@ export default function Team() {
                     {deletingId === memberToDelete.id ? 'Deleting...' : 'Delete'}
                   </Button>
                 </div>
+
+                <NotificationToast
+                  notification={notification}
+                  reduce={reduce}
+                />
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
+
     </>
   );
 }

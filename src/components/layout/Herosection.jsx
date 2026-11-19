@@ -8,7 +8,7 @@ import api from '@/services/api';
 import { getNewsList, isPublishedNews } from '@/lib/news';
 import { getImageUrl } from '@/lib/getImageUrl';
 
-export default function HeroBanner({ onSelect, isLoading = false }) {
+export default function HeroBanner({ onSelect, isLoading = false, newsData }) {
   const reduce = useReducedMotion();
   const navigate = useNavigate();
 
@@ -59,6 +59,14 @@ export default function HeroBanner({ onSelect, isLoading = false }) {
   useEffect(() => {
     let cancelled = false;
 
+    if (Array.isArray(newsData)) {
+      setHeroNews(selectHeroNews(newsData));
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const fetchHeroNews = async () => {
       try {
         setLoading(true);
@@ -104,7 +112,7 @@ export default function HeroBanner({ onSelect, isLoading = false }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [newsData]);
 
   const showLoading = isLoading || loading;
 
