@@ -1,46 +1,131 @@
+// // export const getImageUrl = (imagePath) => {
+// //   if (!imagePath) {
+// //     return '';
+// //   }
+
+// //   let imageUrl = String(imagePath).trim();
+
+// //   // Backend returns localhost URL
+// //   if (
+// //     imageUrl.startsWith('http://localhost:') ||
+// //     imageUrl.startsWith('https://localhost:')
+// //   ) {
+// //     try {
+// //       const url = new URL(imageUrl);
+
+// //       // Replace localhost with backend IP
+// //       url.hostname = '192.168.1.118';
+
+// //       console.log('Converted image URL:', url.toString());
+
+// //       return url.toString();
+// //     } catch (error) {
+// //       console.error('Invalid image URL:', imageUrl);
+// //       return imageUrl;
+// //     }
+// //   }
+
+// //   // Already a complete URL
+// //   if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+// //     return imageUrl;
+// //   }
+
+// //   // Relative image path
+// //   const apiUrl = import.meta.env.VITE_API_URL || '${import.meta.env.VITE_TARGET}/api';
+
+// //   const baseUrl = apiUrl.replace(/\/api\/?$/, '');
+
+// //   console.log('Base URL for image:', baseUrl);
+
+// //   return `${baseUrl}/storage/${imageUrl.replace(/^\/+/, '')}`;
+// // };
+
+// const BACKEND_URL = 'https://news-portal.ethiodeploy.app';
+
 // export const getImageUrl = (imagePath) => {
 //   if (!imagePath) {
 //     return '';
 //   }
 
-//   let imageUrl = String(imagePath).trim();
+//   let value = String(imagePath).trim();
 
-//   // Backend returns localhost URL
-//   if (
-//     imageUrl.startsWith('http://localhost:') ||
-//     imageUrl.startsWith('https://localhost:')
-//   ) {
+//   if (!value) {
+//     return '';
+//   }
+
+//   /*
+//    * Already a complete URL.
+//    */
+//   if (/^https?:\/\//i.test(value)) {
 //     try {
-//       const url = new URL(imageUrl);
+//       const url = new URL(value);
 
-//       // Replace localhost with backend IP
-//       url.hostname = '192.168.1.118';
-
-//       console.log('Converted image URL:', url.toString());
+//       /*
+//        * Backend sometimes returns localhost URLs.
+//        * Convert those to the backend machine IP so
+//        * other devices can access the image.
+//        */
+//       if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+//         url.hostname = '192.168.1.118';
+//       }
 
 //       return url.toString();
-//     } catch (error) {
-//       console.error('Invalid image URL:', imageUrl);
-//       return imageUrl;
+//     } catch {
+//       return value;
 //     }
 //   }
 
-//   // Already a complete URL
-//   if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-//     return imageUrl;
+//   /*
+//    * Remove leading slash.
+//    */
+//   value = value.replace(/^\/+/, '');
+
+//   /*
+//    * If backend already returned:
+//    * storage/news/image.jpg
+//    *
+//    * don't add /storage again.
+//    */
+//   if (value.startsWith('storage/')) {
+//     return `${BACKEND_URL}/${value}`;
 //   }
 
-//   // Relative image path
-//   const apiUrl = import.meta.env.VITE_API_URL || '${import.meta.env.VITE_TARGET}/api';
+//   /*
+//    * If backend returned:
+//    * api/storage/news/image.jpg
+//    *
+//    * don't add another /api or /storage.
+//    */
+//   if (value.startsWith('api/storage/')) {
+//     return `${BACKEND_URL}/${value}`;
+//   }
 
-//   const baseUrl = apiUrl.replace(/\/api\/?$/, '');
-
-//   console.log('Base URL for image:', baseUrl);
-
-//   return `${baseUrl}/storage/${imageUrl.replace(/^\/+/, '')}`;
+//   /*
+//    * Normal backend image path:
+//    *
+//    * news/image.jpg
+//    *
+//    * becomes:
+//    *
+//    * http://192.168.1.118:8000/storage/news/image.jpg
+//    */
+//   return `${BACKEND_URL}/storage/${value}`;
 // };
 
-const BACKEND_URL = 'http://192.168.1.118:8000';
+const getBackendUrl = () => {
+  const apiUrl = import.meta.env.VITE_API_URL;
+  const targetUrl = import.meta.env.VITE_TARGET;
+
+  if (apiUrl && /^https?:\/\//i.test(apiUrl)) {
+    return apiUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+  }
+
+  if (targetUrl && /^https?:\/\//i.test(targetUrl)) {
+    return targetUrl.replace(/\/+$/, '');
+  }
+
+  return '';
+};
 
 export const getImageUrl = (imagePath) => {
   if (!imagePath) {
@@ -53,20 +138,21 @@ export const getImageUrl = (imagePath) => {
     return '';
   }
 
-  /*
-   * Already a complete URL.
-   */
   if (/^https?:\/\//i.test(value)) {
     try {
       const url = new URL(value);
 
-      /*
-       * Backend sometimes returns localhost URLs.
-       * Convert those to the backend machine IP so
-       * other devices can access the image.
-       */
-      if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
-        url.hostname = '192.168.1.118';
+      if (
+        url.hostname === 'localhost' ||
+        url.hostname === '127.0.0.1' ||
+        url.hostname === '192.168.1.118'
+      ) {
+        const backendUrl = getBackendUrl();
+
+        if (backendUrl) {
+          const path = `${url.pathname}${url.search}${url.hash}`;
+          return `${backendUrl}${path}`;
+        }
       }
 
       return url.toString();
@@ -75,39 +161,25 @@ export const getImageUrl = (imagePath) => {
     }
   }
 
-  /*
-   * Remove leading slash.
-   */
   value = value.replace(/^\/+/, '');
 
-  /*
-   * If backend already returned:
-   * storage/news/image.jpg
-   *
-   * don't add /storage again.
-   */
+  const backendUrl = getBackendUrl();
+
+  if (!backendUrl) {
+    return `/storage/${value}`;
+  }
+
   if (value.startsWith('storage/')) {
-    return `${BACKEND_URL}/${value}`;
+    return `${backendUrl}/${value}`;
   }
 
-  /*
-   * If backend returned:
-   * api/storage/news/image.jpg
-   *
-   * don't add another /api or /storage.
-   */
   if (value.startsWith('api/storage/')) {
-    return `${BACKEND_URL}/${value}`;
+    return `${backendUrl}/${value.replace(/^api\//, '')}`;
   }
 
-  /*
-   * Normal backend image path:
-   *
-   * news/image.jpg
-   *
-   * becomes:
-   *
-   * http://192.168.1.118:8000/storage/news/image.jpg
-   */
-  return `${BACKEND_URL}/storage/${value}`;
+  if (value.startsWith('api/')) {
+    return `${backendUrl}/${value}`;
+  }
+
+  return `${backendUrl}/storage/${value}`;
 };

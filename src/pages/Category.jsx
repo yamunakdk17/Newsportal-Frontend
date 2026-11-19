@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 import Trending from '@/components/news/TrendingNews';
 import NewsDateFilter from '@/components/news/NewsDateFilter';
+import Banner from '@/components/Banner/Banners';
 
 import {
   Pagination,
@@ -628,7 +629,11 @@ function Category() {
         </div>
       </main>
 
-      <section className="mt-4 border-t border-[#E1E4E8] pt-10 sm:mt-6 sm:pt-12 xl:mt-8 xl:pt-16">
+      <div className="w-full px-4 sm:px-6 md:px-10 lg:px-16 xl:px-[120px]">
+        <Banner />
+      </div>
+
+      <section className="mt-10 border-t border-[#E1E4E8] pt-10 sm:mt-12 sm:pt-12 xl:mt-14 xl:pt-16">
         <Trending />
       </section>
 
