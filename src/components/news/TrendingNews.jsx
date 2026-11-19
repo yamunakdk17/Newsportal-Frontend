@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
+import { CalendarDays } from 'lucide-react';
+
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
 import { getImageUrl } from '@/lib/getImageUrl';
-
 import { formatNepaliDate } from '@/lib/nepaliDate';
 
 const getAuthor = (story) => {
@@ -19,11 +20,8 @@ const getAuthor = (story) => {
 
 const SIZE = {
   heading: 'text-[clamp(28px,2.083vw,40px)] leading-[1.2]',
-
   title: 'text-[clamp(19px,1.25vw,24px)] leading-[1.35]',
-
   meta: 'text-[clamp(14px,0.833vw,16px)] leading-[1.4]',
-
   caption: 'text-[clamp(16px,0.9375vw,18px)] leading-[1.55]',
 };
 
@@ -31,7 +29,9 @@ const gridClass = 'grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols
 
 function TrendingCard({ story, variants, getImageUrl, onSelect }) {
   const src = getImageUrl(story);
+
   const date = formatNepaliDate(story.published_at || story.created_at);
+
   const author = getAuthor(story);
 
   const canSelect = Boolean(story?.slug);
@@ -71,7 +71,6 @@ function TrendingCard({ story, variants, getImageUrl, onSelect }) {
       </AspectRatio>
 
       {/* Content */}
-      {/* Content */}
       <div className="mt-4 flex w-full flex-col">
         {/* Title */}
         <div className="h-[3.9rem] w-full overflow-hidden">
@@ -81,25 +80,37 @@ function TrendingCard({ story, variants, getImageUrl, onSelect }) {
           </h3>
         </div>
 
-        {/* Author + Date */}
+        {/* Date + Author */}
         <div
-          className={`mt-1 flex min-h-[1.4rem] w-full items-center justify-between gap-4 ${SIZE.meta}`}>
+          className={`mt-2 flex w-full items-center justify-between gap-6 ${SIZE.meta}`}>
+          {/* Left: Nepali Date */}
+          {date ? (
+            <div className="flex min-w-0 items-center gap-2 text-[#979EA9]">
+              <CalendarDays
+                className="h-4 w-4 shrink-0"
+                strokeWidth={1.8}
+                aria-hidden="true"
+              />
+
+              <span className="whitespace-nowrap">{date}</span>
+            </div>
+          ) : (
+            <span />
+          )}
+
+          {/* Right: Author */}
           {author ? (
-            <span className="min-w-0 truncate underline underline-offset-2">
+            <span className="min-w-0 truncate text-right underline underline-offset-2">
               {author}
             </span>
           ) : (
             <span />
           )}
-
-          {date && <span className="shrink-0 whitespace-nowrap">{date}</span>}
         </div>
 
         {/* Description */}
         {caption && (
-          <p
-            className={`mt-2 w-full     text-justify
- text-[#4A4E54] ${SIZE.caption}`}>
+          <p className={`mt-3 w-full text-justify text-[#4A4E54] ${SIZE.caption}`}>
             {caption}
           </p>
         )}
@@ -107,6 +118,7 @@ function TrendingCard({ story, variants, getImageUrl, onSelect }) {
     </motion.article>
   );
 }
+
 export default function Trending({ title = 'Trending News', onSelect }) {
   const reduce = useReducedMotion();
   const navigate = useNavigate();
@@ -170,6 +182,7 @@ export default function Trending({ title = 'Trending News', onSelect }) {
 
   const container = {
     hidden: {},
+
     show: {
       transition: {
         staggerChildren: reduce ? 0 : 0.1,
@@ -186,6 +199,7 @@ export default function Trending({ title = 'Trending News', onSelect }) {
     show: {
       opacity: 1,
       y: 0,
+
       transition: {
         duration: 0.5,
         ease: 'easeOut',

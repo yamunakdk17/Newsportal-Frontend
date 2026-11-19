@@ -50,6 +50,9 @@ export default function Team() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
+  // DELETE CONFIRMATION MODAL
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState(null);
   const fetchMembers = async ({ showLoader = true } = {}) => {
     try {
       if (!showLoader) {
@@ -60,9 +63,13 @@ export default function Team() {
 
       console.log('Admins response:', response.data);
 
-      const list = response.data?.data?.data ?? response.data?.data ?? [];
+      const list = response.data?.data ?? [];
 
-      setMembers(Array.isArray(list) ? list : []);
+      const activeMembers = Array.isArray(list)
+        ? list.filter((member) => member.deleted_at === null)
+        : [];
+
+      setMembers(activeMembers);
     } catch (err) {
       console.error('Failed to fetch admins:', err);
 
@@ -186,25 +193,52 @@ export default function Team() {
     }
   };
 
-  const handleDelete = async (member) => {
+  // OPEN DELETE CONFIRMATION
+  const openDeleteConfirmation = (member) => {
     if (isSuperAdmin(member)) {
       setError('Super Admin cannot be deleted.');
       return;
     }
 
-    const confirmed = window.confirm(`Delete ${member.name}?`);
+    setError('');
+    setMemberToDelete(member);
+    setDeleteConfirmOpen(true);
+  };
 
-    if (!confirmed) return;
+  // CLOSE DELETE CONFIRMATION
+  const closeDeleteConfirmation = () => {
+    if (deletingId) return;
+
+    setDeleteConfirmOpen(false);
+    setMemberToDelete(null);
+  };
+
+  // CONFIRM DELETE
+  const handleDelete = async () => {
+    if (!memberToDelete) return;
+
+    if (isSuperAdmin(memberToDelete)) {
+      setError('Super Admin cannot be deleted.');
+      return;
+    }
 
     try {
-      setDeletingId(member.id);
+      setDeletingId(memberToDelete.id);
       setError('');
 
-      const response = await api.delete(`/admin/admins/${member.id}`);
+      const response = await api.delete(`/admin/admins/${memberToDelete.id}`);
 
       console.log('Delete admin response:', response.data);
 
-      setMembers((current) => current.filter((m) => m.id !== member.id));
+      // Close confirmation after successful deletion.
+      setDeleteConfirmOpen(false);
+      setMemberToDelete(null);
+
+      // Backend remains the source of truth.
+      // Fetch the latest admin list.
+      await fetchMembers({
+        showLoader: false,
+      });
     } catch (err) {
       console.error('Delete admin error:', err);
 
@@ -284,6 +318,7 @@ export default function Team() {
                   variant="outline"
                   onClick={() => {
                     setError('');
+
                     fetchMembers({
                       showLoader: false,
                     });
@@ -329,11 +364,8 @@ export default function Team() {
                 <div
                   className={`hidden bg-[#2168CD] px-4 py-3 text-white md:grid sm:px-5 ${GRID} ${TEXT}`}>
                   <span className="font-medium">Name</span>
-
                   <span className="font-medium">Email</span>
-
                   <span className="font-medium">Role</span>
-
                   <span className="font-medium">Action</span>
                 </div>
 
@@ -439,7 +471,7 @@ export default function Team() {
 
                                   <Button
                                     type="button"
-                                    onClick={() => handleDelete(member)}
+                                    onClick={() => openDeleteConfirmation(member)}
                                     disabled={deletingId === member.id}
                                     aria-label={`Delete ${member.name}`}
                                     className="h-8 gap-1.5 rounded-xl bg-[#F5365C] px-2.5 text-[11px] font-normal text-white shadow-none hover:bg-[#DC2A4F]">
@@ -509,7 +541,7 @@ export default function Team() {
         </div>
       </main>
 
-      {/* MODAL */}
+      {/* CREATE / EDIT MODAL */}
       <AnimatePresence>
         {modalOpen && (
           <>
@@ -653,6 +685,104 @@ export default function Team() {
                     </Button>
                   </div>
                 </form>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {deleteConfirmOpen && memberToDelete && (
+          <>
+            {/* BACKDROP */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[110] bg-slate-950/45 backdrop-blur-sm"
+            />
+
+            {/* CENTERED CONFIRMATION */}
+            <motion.div
+              initial={
+                reduce
+                  ? false
+                  : {
+                      opacity: 0,
+                      scale: 0.96,
+                      y: 8,
+                    }
+              }
+              animate={{
+                opacity: 1,
+                scale: 1,
+                y: 0,
+              }}
+              exit={{
+                opacity: 0,
+                scale: 0.96,
+                y: 8,
+              }}
+              transition={{
+                duration: 0.2,
+                ease: 'easeOut',
+              }}
+              className="fixed inset-0 z-[111] flex items-center justify-center p-4">
+              <div
+                className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delete-confirmation-title">
+                {/* DELETE ICON */}
+                <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-red-50">
+                  <Trash2 className="size-5 text-[#F5365C]" />
+                </div>
+
+                {/* CONTENT */}
+                <div className="mt-4 text-center">
+                  <h2
+                    id="delete-confirmation-title"
+                    className="text-base font-bold text-[#16181A]">
+                    Are you sure you want to delete?
+                  </h2>
+
+                  <p className="mt-2 text-xs leading-[1.5] text-[#4A4E54]">
+                    You are about to permanently delete{' '}
+                    <span className="font-semibold text-[#16181A]">
+                      {memberToDelete.name}
+                    </span>
+                    .
+                  </p>
+
+                  <p className="mt-1 text-[11px] text-[#9AA0A8]">
+                    This action cannot be undone.
+                  </p>
+                </div>
+
+                {/* ACTIONS */}
+                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={closeDeleteConfirmation}
+                    disabled={deletingId === memberToDelete.id}
+                    className="h-9 rounded-xl border-[#D8DBDF] px-4 text-xs shadow-none">
+                    Cancel
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={deletingId === memberToDelete.id}
+                    className="h-9 rounded-xl bg-[#F5365C] px-4 text-xs text-white shadow-none hover:bg-[#DC2A4F]">
+                    {deletingId === memberToDelete.id && (
+                      <LoaderCircle className="mr-2 size-3.5 animate-spin" />
+                    )}
+
+                    {deletingId === memberToDelete.id ? 'Deleting...' : 'Delete'}
+                  </Button>
+                </div>
               </div>
             </motion.div>
           </>

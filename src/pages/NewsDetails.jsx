@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, CalendarDays, X } from 'lucide-react';
 
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -15,6 +15,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getImageUrl } from '@/lib/getImageUrl';
+import { formatNepaliDate } from '@/lib/nepaliDate';
 
 /**
  * Route:
@@ -22,11 +23,6 @@ import { getImageUrl } from '@/lib/getImageUrl';
  *
  * Backend:
  * GET /api/news/{slug}
- */
-
-/*
- * Convert backend image path into
- * a frontend-accessible image URL.
  */
 
 /*
@@ -57,18 +53,6 @@ const getParagraphs = (item) => {
     .map((paragraph) => paragraph.replace(/\s*\n\s*/g, ' ').trim())
     .filter(Boolean);
 };
-
-/*
- * Format published date.
- */
-const formatDate = (value) =>
-  value
-    ? new Date(value).toLocaleDateString('ne-NP', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-    : '';
 
 function NewsDetails() {
   const { slug } = useParams();
@@ -194,6 +178,11 @@ function NewsDetails() {
    */
   const paragraphs = getParagraphs(article);
 
+  /*
+   * Nepali published date.
+   */
+  const publishedDate = formatNepaliDate(article?.published_at);
+
   return (
     <>
       <Header />
@@ -253,13 +242,25 @@ function NewsDetails() {
                     HERO BLOCK
               ====================== */}
               <div className="flex w-full flex-col items-center gap-2">
-                {/* Author + Date */}
+                {/* Date + Author */}
                 <motion.div
                   {...fadeUp(0.1)}
-                  className="flex w-full items-center justify-between border-b border-[#E5E7EB] pb-2 text-xs leading-5 tracking-[0.002em] text-[#6B7280] sm:text-sm">
-                  <span>{article.author}</span>
+                  className="flex w-full items-center justify-between gap-6 border-b border-[#E5E7EB] pb-2 text-xs leading-5 tracking-[0.002em] text-[#6B7280] sm:text-sm">
+                  {/* LEFT: Nepali Date */}
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CalendarDays
+                      className="h-4 w-4 shrink-0"
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                    />
 
-                  <span>{formatDate(article.published_at)}</span>
+                    <span className="whitespace-nowrap">{publishedDate}</span>
+                  </div>
+
+                  {/* RIGHT: Author */}
+                  {article.author && (
+                    <span className="min-w-0 truncate text-right">{article.author}</span>
+                  )}
                 </motion.div>
 
                 <div className="flex w-full max-w-[1200px] flex-col items-start gap-4 sm:gap-5">
@@ -335,8 +336,7 @@ function NewsDetails() {
                     {paragraphs.map((text, index) => (
                       <p
                         key={index}
-                        className="w-full text-left
-                        text-base font-normal leading-[1.75] tracking-normal text-[#333333] sm:text-[17px] md:text-lg lg:text-lg xl:text-[19px]">
+                        className="w-full text-left text-base font-normal leading-[1.75] tracking-normal text-[#333333] sm:text-[17px] md:text-lg lg:text-lg xl:text-[19px]">
                         {text}
                       </p>
                     ))}

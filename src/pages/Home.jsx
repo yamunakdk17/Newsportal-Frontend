@@ -25,9 +25,9 @@ function Home() {
 
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // =========================
+  //
   // FETCH CATEGORIES
-  // =========================
+  //
   useEffect(() => {
     let active = true;
 
@@ -159,6 +159,11 @@ function Home() {
               <NewsSection selectedCategory={selectedCategory} newsData={news} />
             </section>
 
+            {/* NEWS SECTION 2 */}
+            <section className="my-16">
+              <NewsSection selectedCategory={selectedCategory} newsData={news} />
+            </section>
+
             {/* BANNER */}
             <section className="my-18 w-full">
               <Banners />
@@ -169,9 +174,18 @@ function Home() {
               <NewsAnotherSection newsData={news} onSelect={handleHeroSelect} />
             </section>
 
+            {/* NEWS SECTION 3 */}
+            <section className="my-16">
+              <NewsSection selectedCategory={selectedCategory} newsData={news} />
+            </section>
+
             {/* SECOND BANNER */}
             <section className="my-18 w-full">
               <Banners />
+            </section>
+            {/* NEWS ANOTHER 2 */}
+            <section className="my-16">
+              <NewsAnotherSection newsData={news} onSelect={handleHeroSelect} />
             </section>
           </>
         )}

@@ -228,7 +228,6 @@ function Login() {
             className="absolute inset-0 block h-full w-full object-cover object-center"
           />
         </motion.aside>
-
         {/*
             LOGIN COLUMN
          */}
@@ -246,7 +245,7 @@ function Login() {
               duration: 0.6,
               ease: 'easeOut',
             }}
-            className="w-full max-w-[560px] rounded-3xl bg-white p-5 sm:p-7 xl:p-8">
+            className="w-full max-w-[440px] rounded-3xl bg-white p-5 sm:p-7 xl:p-8">
             <motion.div
               variants={stagger}
               initial="hidden"
@@ -268,12 +267,8 @@ function Login() {
               </motion.header>
 
               {/* LOGIN FORM */}
-              <form
-                onSubmit={handleSubmit(onSubmit)}
-                noValidate
-                className="flex w-full flex-col">
-                {/* Email, password and button share the same width */}
-                <div className="mx-auto flex w-full max-w-[340px] flex-col gap-4">
+              <form onSubmit={handleSubmit(onSubmit)} noValidate className="w-full">
+                <div className="mx-auto flex w-full max-w-[360px] flex-col gap-4">
                   {/* EMAIL */}
                   <Field id="email" label="Email Address" error={errors.email?.message}>
                     <Input
@@ -368,19 +363,12 @@ function Login() {
               {/* FOOTER */}
               <motion.p
                 variants={rise}
-                className="
-    w-full
-    text-center
-    text-xs
-    leading-[1.5]
-    text-[#C7CBD1]
-    sm:text-sm
-  ">
+                className="w-full text-center text-xs leading-[1.5] text-[#C7CBD1] sm:text-sm">
                 © {new Date().getFullYear()} Manara Shiksha Khabar. All rights reserved.
               </motion.p>
             </motion.div>
           </motion.div>
-        </section>
+        </section>{' '}
       </main>
     </MotionConfig>
   );

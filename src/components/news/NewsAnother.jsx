@@ -1,23 +1,50 @@
 // import { useEffect, useState } from 'react';
 // import { motion, useReducedMotion } from 'framer-motion';
+// import { CalendarDays } from 'lucide-react';
+
 // import { AspectRatio } from '@/components/ui/aspect-ratio';
 // import { Skeleton } from '@/components/ui/skeleton';
 
 // import api from '@/services/api';
 // import { getNewsList, isPublishedNews } from '@/lib/news';
 // import { getImageUrl } from '@/lib/getImageUrl';
+// import { formatNepaliDate } from '@/lib/nepaliDate';
 
 // /*
 //  * News title styling
 //  */
 // const titleClass =
-//   "font-['Mukta',sans-serif] text-base font-semibold leading-[1.4] tracking-[0.002em] text-[#16181A] transition-colors group-hover:underline underline-offset-4 sm:text-[17px] md:text-lg xl:text-[19px]";
+//   "font-['Mukta',sans-serif] text-base font-semibold leading-[1.2] tracking-[0.002em] text-black transition-colors group-hover:underline underline-offset-4 sm:text-lg xl:text-xl 2xl:text-[22px]";
+
+// /*
+//  * Date styling
+//  *
+//  * Left aligned and kept close to the title.
+//  */
+// const dateClass =
+//   "flex w-fit items-center justify-start gap-1.5 font-['Mukta',sans-serif] text-[13px] font-medium text-[#6B7280] sm:text-sm";
+
+// /*
+//  * Story date
+//  *
+//  * Prefer published date, then fall back to created date.
+//  */
+// const getStoryDate = (story) => story?.published_at || story?.created_at || null;
 
 // /*
 //  * News card
 //  */
-// function Card({ story, ratio, variants, getImageUrl, onSelect, className = '' }) {
+// function Card({
+//   story,
+//   ratio,
+//   variants,
+//   getImageUrl,
+//   onSelect,
+//   className = '',
+//   titleLines = 'line-clamp-3',
+// }) {
 //   const src = getImageUrl(story);
+//   const date = formatNepaliDate(getStoryDate(story));
 
 //   return (
 //     <motion.article
@@ -32,8 +59,8 @@
 //           onSelect(story);
 //         }
 //       }}
-//       className={`group flex w-full cursor-pointer flex-col items-start gap-3 px-0 outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 ${className}`}>
-//       <AspectRatio ratio={ratio} className="w-full overflow-hidden bg-neutral-200">
+//       className={`group flex w-full cursor-pointer flex-col items-start gap-[10px] outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 ${className}`}>
+//       <AspectRatio ratio={ratio} className="w-full overflow-hidden bg-[#DDE0E3]">
 //         {src ? (
 //           <img
 //             src={src}
@@ -42,13 +69,21 @@
 //             className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
 //           />
 //         ) : (
-//           <div className="flex h-full w-full items-center justify-center text-sm text-neutral-500">
+//           <div className="flex h-full w-full items-center justify-center text-sm text-[#979EA9]">
 //             No image available
 //           </div>
 //         )}
 //       </AspectRatio>
 
-//       <h3 className={titleClass}>{story.title}</h3>
+//       <h3 className={`${titleClass} ${titleLines}`}>{story.title}</h3>
+
+//       {date && (
+//         <div className={dateClass}>
+//           <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
+
+//           <time dateTime={getStoryDate(story)}>{date}</time>
+//         </div>
+//       )}
 //     </motion.article>
 //   );
 // }
@@ -124,10 +159,11 @@
 //   };
 
 //   /*
-//    * Equal spacing and responsive grid
+//    * Figma "Newspost": 402 | 828 | 402
+//    * Side stories vertically centred against the big one.
 //    */
 //   const gridClass =
-//     'mx-auto grid w-full max-w-[1680px] grid-cols-1 items-start gap-6 md:grid-cols-2 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.8fr)_minmax(0,0.9fr)] lg:gap-0 lg:divide-x lg:divide-gray-300';
+//     'mx-auto grid w-full max-w-[1680px] grid-cols-1 items-start gap-6 md:grid-cols-2 lg:grid-cols-[402fr_828fr_402fr] lg:items-center';
 
 //   /*
 //    * Loading UI
@@ -135,11 +171,11 @@
 //   if (!Array.isArray(newsData) && loading) {
 //     return (
 //       <div className={gridClass}>
-//         <Skeleton className="aspect-[402/386] w-full rounded-none lg:px-5" />
+//         <Skeleton className="aspect-[402/386] w-full rounded-none" />
 
-//         <Skeleton className="aspect-[828/532] w-full rounded-none lg:px-5" />
+//         <Skeleton className="aspect-[828/532] w-full rounded-none" />
 
-//         <Skeleton className="aspect-[402/386] w-full rounded-none lg:px-5" />
+//         <Skeleton className="aspect-[402/386] w-full rounded-none" />
 //       </div>
 //     );
 //   }
@@ -173,7 +209,7 @@
 //           variants={item}
 //           getImageUrl={getImageurl}
 //           onSelect={onSelect}
-//           className="md:col-start-1 md:row-start-2 lg:col-start-1 lg:row-start-1 lg:px-5 lg:pr-5"
+//           className="md:col-start-1 md:row-start-2 lg:col-start-1 lg:row-start-1"
 //         />
 //       )}
 
@@ -184,7 +220,8 @@
 //         variants={item}
 //         getImageUrl={getImageurl}
 //         onSelect={onSelect}
-//         className="order-first md:order-none md:col-span-2 md:col-start-1 md:row-start-1 lg:col-span-1 lg:col-start-2 lg:px-5"
+//         titleLines="line-clamp-2"
+//         className="order-first md:order-none md:col-span-2 md:col-start-1 md:row-start-1 lg:col-span-1 lg:col-start-2"
 //       />
 
 //       {/* RIGHT CARD */}
@@ -195,30 +232,56 @@
 //           variants={item}
 //           getImageUrl={getImageurl}
 //           onSelect={onSelect}
-//           className="md:col-start-2 md:row-start-2 lg:col-start-3 lg:row-start-1 lg:px-5 lg:pl-5"
+//           className="md:col-start-2 md:row-start-2 lg:col-start-3 lg:row-start-1"
 //         />
 //       )}
 //     </motion.section>
 //   );
 // }
+
 import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { CalendarDays } from 'lucide-react';
+
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
 import { getNewsList, isPublishedNews } from '@/lib/news';
 import { getImageUrl } from '@/lib/getImageUrl';
+import { formatNepaliDate } from '@/lib/nepaliDate';
 
 /*
- * News title styling (Figma: Mukta semi-bold 32px / 120%, black).
- * Sized about two steps below Figma, same scale as the category sections.
+ * News title styling
  */
 const titleClass =
   "font-['Mukta',sans-serif] text-base font-semibold leading-[1.2] tracking-[0.002em] text-black transition-colors group-hover:underline underline-offset-4 sm:text-lg xl:text-xl 2xl:text-[22px]";
 
 /*
- * News card: image, 10px gap, title
+ * Fixed title boxes (line-height is 1.2, so 3 lines = 3.6em, 2 lines = 2.4em).
+ * The height is reserved even for short titles, so every card in a row
+ * has the same height and the images never shift. Long titles end with "...".
+ */
+const SIDE_TITLE_CLAMP = 'line-clamp-3 min-h-[3.6em]';
+const MAIN_TITLE_CLAMP = 'line-clamp-2 min-h-[2.4em]';
+
+/*
+ * Date styling
+ *
+ * Left aligned, fixed height so the position never changes.
+ */
+const dateClass =
+  "flex h-5 w-fit items-center justify-start gap-1.5 font-['Mukta',sans-serif] text-[13px] font-medium text-[#6B7280] sm:text-sm";
+
+/*
+ * Story date
+ *
+ * Prefer published date, then fall back to created date.
+ */
+const getStoryDate = (story) => story?.published_at || story?.created_at || null;
+
+/*
+ * News card
  */
 function Card({
   story,
@@ -227,9 +290,10 @@ function Card({
   getImageUrl,
   onSelect,
   className = '',
-  titleLines = 'line-clamp-3',
+  titleClamp = SIDE_TITLE_CLAMP,
 }) {
   const src = getImageUrl(story);
+  const date = formatNepaliDate(getStoryDate(story));
 
   return (
     <motion.article
@@ -260,7 +324,18 @@ function Card({
         )}
       </AspectRatio>
 
-      <h3 className={`${titleClass} ${titleLines}`}>{story.title}</h3>
+      <h3 className={`${titleClass} ${titleClamp}`}>{story.title}</h3>
+
+      {/* Date row is always rendered so the card height stays the same */}
+      <div className={dateClass}>
+        {date && (
+          <>
+            <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
+
+            <time dateTime={getStoryDate(story)}>{date}</time>
+          </>
+        )}
+      </div>
     </motion.article>
   );
 }
@@ -336,8 +411,8 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   };
 
   /*
-   * Figma "Newspost": 402 | 828 | 402 with 24px gaps, no dividers,
-   * side stories vertically centred against the big one.
+   * Figma "Newspost": 402 | 828 | 402
+   * Side stories vertically centred against the big one.
    */
   const gridClass =
     'mx-auto grid w-full max-w-[1680px] grid-cols-1 items-start gap-6 md:grid-cols-2 lg:grid-cols-[402fr_828fr_402fr] lg:items-center';
@@ -386,6 +461,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           variants={item}
           getImageUrl={getImageurl}
           onSelect={onSelect}
+          titleClamp={SIDE_TITLE_CLAMP}
           className="md:col-start-1 md:row-start-2 lg:col-start-1 lg:row-start-1"
         />
       )}
@@ -397,7 +473,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
         variants={item}
         getImageUrl={getImageurl}
         onSelect={onSelect}
-        titleLines="line-clamp-2"
+        titleClamp={MAIN_TITLE_CLAMP}
         className="order-first md:order-none md:col-span-2 md:col-start-1 md:row-start-1 lg:col-span-1 lg:col-start-2"
       />
 
@@ -409,6 +485,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           variants={item}
           getImageUrl={getImageurl}
           onSelect={onSelect}
+          titleClamp={SIDE_TITLE_CLAMP}
           className="md:col-start-2 md:row-start-2 lg:col-start-3 lg:row-start-1"
         />
       )}

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CalendarDays } from 'lucide-react';
 
 import api from '@/services/api';
 import { getNewsList, isPublishedNews } from '@/lib/news';
 import { getImageUrl } from '@/lib/getImageUrl';
 import { formatNepaliDate } from '@/lib/nepaliDate';
 
-// Text sizes in one place. About two steps below the Figma values (56 / 40 / 32 px at 1920 wide),
-// scaling up with the screen. Change a size here and every news section follows.
+// Text sizes in one place.
+// About two steps below the Figma values (56 / 40 / 32 px at 1920 wide),
+// scaling up with the screen.
 const SIZE = {
   sectionTitle: 'text-2xl sm:text-3xl lg:text-4xl 2xl:text-[40px]',
   mainTitle: 'text-lg sm:text-xl lg:text-2xl 2xl:text-[28px]',
@@ -132,11 +134,11 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
 
   return (
     <>
-      {/* Section: black line on top, 10px padding, 10px between title and grid (Figma "News Category") */}
+      {/* News Section */}
       <section className="mb-10 flex w-full flex-col gap-[10px] border-t border-[#16181A] py-[10px] font-['Mukta',sans-serif] text-[#16181A] sm:mb-14 2xl:mb-[68px]">
         <h2 className={`font-bold leading-[1.2] tracking-[0.002em] ${SIZE.sectionTitle}`}>
           {selectedCategory === 'All'
-            ? 'Latest News'
+            ? ' News'
             : selectedCategory?.name || selectedCategory}
         </h2>
 
@@ -167,12 +169,20 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
               className={`line-clamp-2 font-bold leading-[1.2] tracking-[0.002em] ${SIZE.mainTitle}`}>
               {mainNews.title}
             </h3>
-            <p className="text-sm font-normal text-[#979EA9]">
-              {formatNepaliDate(mainNews.published_at)}
-            </p>
+
+            {/* Date with calendar icon */}
+            <div className="flex items-center gap-2 text-sm font-normal text-[#979EA9]">
+              <CalendarDays
+                className="h-4 w-4 shrink-0"
+                strokeWidth={1.8}
+                aria-hidden="true"
+              />
+
+              <span>{formatNepaliDate(mainNews.published_at)}</span>
+            </div>
           </article>
 
-          {/* SMALL NEWS: 24px between, each with its own grey line on top */}
+          {/* SMALL NEWS */}
           <div className="flex min-w-0 flex-col gap-6">
             {sideNews.map((item, index) => (
               <article
@@ -181,7 +191,7 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
                 className={`group flex min-w-0 items-start gap-4 border-t border-[#979EA9] py-[10px] sm:gap-6 ${
                   item.slug ? 'cursor-pointer' : ''
                 }`}>
-                {/* image 260 : title 402 */}
+                {/* Image */}
                 <div className="aspect-[260/200] w-[38%] shrink-0 overflow-hidden bg-[#DDE0E3]">
                   {getImageurl(item) ? (
                     <img
@@ -197,15 +207,23 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
                   )}
                 </div>
 
+                {/* Small news content */}
                 <div className="min-w-0 flex-1">
                   <h3
                     className={`line-clamp-4 font-bold leading-[1.2] tracking-[0.002em] ${SIZE.sideTitle}`}>
                     {item.title}
                   </h3>
 
-                  <p className="mt-2 text-sm font-normal text-[#979EA9]">
-                    {formatNepaliDate(item.published_at)}
-                  </p>
+                  {/* Date with calendar icon */}
+                  <div className="mt-2 flex items-center gap-2 text-sm font-normal text-[#979EA9]">
+                    <CalendarDays
+                      className="h-4 w-4 shrink-0"
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                    />
+
+                    <span>{formatNepaliDate(item.published_at)}</span>
+                  </div>
                 </div>
               </article>
             ))}
@@ -213,7 +231,7 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
         </div>
       </section>
 
-      {/* Closing black line. When sections are stacked, the next section's top line already does this. */}
+      {/* Closing black line */}
       {bottomLine && <div aria-hidden="true" className="border-t border-[#16181A]" />}
     </>
   );

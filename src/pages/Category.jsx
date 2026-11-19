@@ -14,7 +14,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import Trending from '@/components/news/TrendingNews';
-
+import NewsDateFilter from '@/components/news/NewsDateFilter';
 import {
   Pagination,
   PaginationContent,
@@ -368,6 +368,7 @@ function Category() {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
 
   /* =====================================================
      FETCH CATEGORY NEWS
@@ -394,7 +395,7 @@ function Category() {
       return;
     }
 
-    const cacheKey = `${categoryId}-${page}`;
+    const cacheKey = `${categoryId}-${page}-${selectedDate || 'all'}`;
 
     const cached = categoryNewsCache.get(cacheKey);
 
@@ -439,6 +440,15 @@ function Category() {
           },
           signal: controller.signal,
         });
+
+        // const response = await api.get(`/category/${categoryId}/news`, {
+        //   params: {
+        //     page,
+        //     per_page: PER_PAGE,
+        //     ...(selectedDate ? { date: selectedDate } : {}),
+        //   },
+        //   signal: controller.signal,
+        // });
 
         console.log(
           `Category ${categoryId} API time: ${Math.round(
@@ -523,7 +533,7 @@ function Category() {
       active = false;
       controller.abort();
     };
-  }, [categoryId, page, categoryNameFromNavigation]);
+  }, [categoryId, page, categoryNameFromNavigation, selectedDate]);
 
   /* =====================================================
      CHANGE PAGE
@@ -550,9 +560,9 @@ function Category() {
     });
   };
 
-  /* =====================================================
+  /*
      ANIMATION
-  ===================================================== */
+   */
 
   const container = {
     hidden: {},
@@ -579,9 +589,9 @@ function Category() {
     },
   };
 
-  /* =====================================================
+  /*
      UI
-  ===================================================== */
+   */
 
   return (
     <>
