@@ -131,7 +131,7 @@ export default function DailyNews({ title = 'Daily Updates', newsData }) {
         const response = await api.get('/news', {
           params: {
             page: 1,
-            per_page: 8,
+            per_page: 16,
           },
         });
 
