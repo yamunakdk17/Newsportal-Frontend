@@ -14,12 +14,12 @@ function NotificationToast({ notification, reduce }) {
           className={`flex w-full items-start justify-between gap-3 rounded-xl border bg-white px-3 py-2 shadow-sm ${
             isError
               ? 'border-red-200 border-l-4 border-l-[#F5365C]'
-              : 'border-green-200 border-l-4 border-l-green-500'
+              : 'border-green-200 border-l-4 border-l-blue-500'
           }`}>
           <p
             role={isError ? 'alert' : 'status'}
             className={`pt-0.5 text-xs font-medium leading-[1.4] ${
-              isError ? 'text-[#981733]' : 'text-green-700'
+              isError ? 'text-[#981733]' : 'text-blue-700'
             }`}>
             {notification.message}
           </p>

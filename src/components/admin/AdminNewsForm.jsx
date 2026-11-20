@@ -231,8 +231,7 @@ function AdminNewsForm({
                 <Textarea
                   id="news-excerpt"
                   value={excerpt}
-                  onChange={(e) => setExcerpt(e.target.value.slice(0, 100))}
-                  maxLength={100}
+                  onChange={(e) => setExcerpt(e.target.value)}
                   placeholder="Write a short description of the news..."
                   disabled={saving}
                   rows={4}

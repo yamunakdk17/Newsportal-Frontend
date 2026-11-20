@@ -17,13 +17,25 @@ export default function HeroBanner({ onSelect, isLoading = false, newsData }) {
 
   const heights =
     'min-h-[320px] h-[420px] sm:h-[480px] md:h-[540px] lg:h-[620px] xl:h-[676px]';
+  const getPriorityLevel = (news) => {
+    const priority = String(news?.priority ?? '')
+      .trim()
+      .toLowerCase();
 
-  const getPriority = (news) => {
-    const priority = Number(news?.priority);
+    if (priority === 'high' || priority === '1') {
+      return 3;
+    }
 
-    return Number.isFinite(priority) ? priority : 0;
+    if (priority === 'medium' || priority === '2') {
+      return 2;
+    }
+
+    if (priority === 'low' || priority === '3') {
+      return 1;
+    }
+
+    return 0;
   };
-
   const getPublishedTime = (news) => {
     const time = new Date(
       news?.published_at || news?.created_at || news?.updated_at || 0,
@@ -37,16 +49,26 @@ export default function HeroBanner({ onSelect, isLoading = false, newsData }) {
       return null;
     }
 
-    const candidates = items
+    const featuredCandidates = items
       .filter(isPublishedNews)
+      .filter((item) => {
+        const value = item?.is_featured;
+
+        return (
+          value === true ||
+          value === 1 ||
+          value === '1' ||
+          String(value).trim().toLowerCase() === 'true'
+        );
+      })
       .filter((item) => Boolean(item?.featured_image));
 
-    if (candidates.length === 0) {
+    if (featuredCandidates.length === 0) {
       return null;
     }
 
-    return [...candidates].sort((a, b) => {
-      const priorityDifference = getPriority(b) - getPriority(a);
+    return [...featuredCandidates].sort((a, b) => {
+      const priorityDifference = getPriorityLevel(b) - getPriorityLevel(a);
 
       if (priorityDifference !== 0) {
         return priorityDifference;

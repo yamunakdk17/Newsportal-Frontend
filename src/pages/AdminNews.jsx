@@ -225,7 +225,7 @@ function AdminNews() {
       const response = await api.get('/admin/posts', {
         params: {
           page: 1,
-          per_page: 50,
+          per_page: 100,
         },
       });
 
@@ -471,9 +471,7 @@ function AdminNews() {
 
     const hasActiveFeaturedImage =
       featuredImage instanceof File || Boolean(existingFeaturedImage);
-    const retainedImagePaths = existingGalleryImages
-      .map(getImagePath)
-      .filter(Boolean);
+    const retainedImagePaths = existingGalleryImages.map(getImagePath).filter(Boolean);
 
     formData.append('is_featured', hasActiveFeaturedImage && isFeatured ? '1' : '0');
 
@@ -524,7 +522,8 @@ function AdminNews() {
     };
 
     if (
-      (featuredRemoved || (editingPostId && !getImagePath(editingNews?.featured_image))) &&
+      (featuredRemoved ||
+        (editingPostId && !getImagePath(editingNews?.featured_image))) &&
       !(featuredImage instanceof File)
     ) {
       payload.featured_image = null;
@@ -703,7 +702,8 @@ function AdminNews() {
   };
 
   const handleDeleteNews = async (newsId) => {
-    const postId = typeof newsId === 'object' ? getNewsId(newsId) : String(newsId ?? '').trim();
+    const postId =
+      typeof newsId === 'object' ? getNewsId(newsId) : String(newsId ?? '').trim();
 
     if (!postId || postId === 'undefined' || postId === 'null' || deletingId) {
       return;
@@ -714,9 +714,7 @@ function AdminNews() {
       setError('');
       setSuccess('');
 
-      const response = await api.delete(
-        `/admin/posts/${encodeURIComponent(postId)}`,
-      );
+      const response = await api.delete(`/admin/posts/${encodeURIComponent(postId)}`);
 
       if (!response.data?.success) {
         showErrorNotification(response.data?.message || 'Unable to delete news.');
@@ -1446,7 +1444,8 @@ function AdminNews() {
 
                 <p className="mt-1 break-words text-sm text-slate-500">
                   Are you sure you want to delete &quot;
-                  {deleteTarget.title}&quot;? It will move to Recovery and can be restored.
+                  {deleteTarget.title}&quot;? It will move to Recovery and can be
+                  restored.
                 </p>
               </div>
             </div>
