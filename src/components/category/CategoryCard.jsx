@@ -26,16 +26,13 @@ export default function CategoryBar({
     [category?.id, category?.name, category?.slug]
       .filter((value) => value !== null && value !== undefined)
       .map((value) => String(value).toLowerCase());
-
-  const buttonClass = (active) =>
+  const buttonClass = () =>
     [
-      'h-auto shrink-0 rounded-none px-3 py-1.5 sm:px-3.5 sm:py-2',
-      "font-['Geist',sans-serif] text-sm font-semibold leading-normal tracking-[-0.002em] whitespace-nowrap",
-      'sm:text-base md:text-lg xl:text-lg',
+      'h-auto shrink-0 rounded-none px-3 py-2 sm:px-3.5 sm:py-2.5',
+      "font-['Geist',sans-serif] text-base font-semibold leading-normal tracking-[-0.002em] whitespace-nowrap",
+      'sm:text-lg md:text-xl xl:text-xl',
       'text-[#F9F9FA] transition-colors hover:text-[#F9F9FA]',
-      active
-        ? 'bg-[#0D3573] ring-2 ring-[#164B99] ring-offset-2 hover:bg-[#0D3573]'
-        : 'bg-[#164B99] hover:bg-[#0F3D7F]',
+      'bg-[#164B99] hover:bg-[#0F3D7F]',
     ].join(' ');
 
   const handleSelect = (event, category) => {
@@ -145,9 +142,9 @@ export default function CategoryBar({
               <motion.li variants={pill}>
                 <Button
                   type="button"
-                  aria-pressed={selectedCategory === 'All'}
+                  aria-pressed={false}
                   onClick={(event) => handleSelect(event, 'All')}
-                  className={buttonClass(selectedCategory === 'All')}>
+                  className={buttonClass(false)}>
                   All
                 </Button>
               </motion.li>

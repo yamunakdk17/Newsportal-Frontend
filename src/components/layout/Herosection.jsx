@@ -163,7 +163,7 @@ export default function HeroBanner({ onSelect, isLoading = false, newsData }) {
     <section
       {...interactive}
       aria-label={title}
-      className={`relative flex w-full reitems-start overflow-hidden bg-[#164B99] ${heights} ${
+      className={`relative flex w-full items-start overflow-hidden bg-[#164B99] ${heights} ${
         clickable
           ? 'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2'
           : ''
@@ -224,7 +224,7 @@ export default function HeroBanner({ onSelect, isLoading = false, newsData }) {
                 delay: 0.2,
               }}
               className="
-          line-clamp-3
+          line-clamp-2
           w-full
           max-w-[1100px]
           overflow-hidden

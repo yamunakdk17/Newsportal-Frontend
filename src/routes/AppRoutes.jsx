@@ -6,6 +6,7 @@ import NewsDetails from '@/pages/NewsDetails';
 import Login from '@/pages/Login';
 
 import AdminNews from '@/pages/AdminNews';
+import AdminNewsRecovery from '@/pages/admin/AdminNewsRecovery';
 import AdminCategories from '@/pages/AdminCategories';
 import AdminBanners from '@/pages/AdminBanners';
 import AdminTeam from '@/pages/AdminTeam';
@@ -25,6 +26,8 @@ export default function AppRoutes() {
 
       <Route element={<AdminAuthGuard />}>
         <Route path="/admin/news" element={<AdminNews />} />
+
+        <Route path="/admin/news/recovery" element={<AdminNewsRecovery />} />
 
         <Route path="/admin/categories" element={<AdminCategories />} />
 

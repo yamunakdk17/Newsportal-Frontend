@@ -10,6 +10,7 @@ function AdminNewsForm({
   categories,
   categoriesLoading,
   saving,
+  error,
 
   categoryId,
   setCategoryId,
@@ -121,8 +122,8 @@ function AdminNewsForm({
 
             <p className="mt-1 text-sm text-slate-500 sm:text-base">
               {editingNews
-                ? 'Update the news article information.'
-                : 'Create and publish a new news article.'}
+                ? 'Update the news information.'
+                : 'Create and publish a new news .'}
             </p>
           </div>
 
@@ -154,14 +155,15 @@ function AdminNewsForm({
                   id="news-title"
                   type="text"
                   value={title}
-                  onChange={(event) => {
-                    setTitle(event.target.value);
+                  onChange={(e) => {
+                    setTitle(e.target.value.slice(0, 50));
 
                     setFormErrors((prev) => ({
                       ...prev,
                       title: '',
                     }));
                   }}
+                  maxLength={50}
                   placeholder="Enter news title"
                   disabled={saving}
                   aria-invalid={Boolean(formErrors.title)}
@@ -226,9 +228,8 @@ function AdminNewsForm({
                 <Textarea
                   id="news-excerpt"
                   value={excerpt}
-                  onChange={(event) => {
-                    setExcerpt(event.target.value);
-                  }}
+                  onChange={(e) => setExcerpt(e.target.value.slice(0, 50))}
+                  maxLength={50}
                   placeholder="Write a short description of the news..."
                   disabled={saving}
                   rows={4}
@@ -254,7 +255,7 @@ function AdminNewsForm({
                       body: '',
                     }));
                   }}
-                  placeholder="Write the complete news article..."
+                  placeholder="Write the complete news body..."
                   disabled={saving}
                   aria-invalid={Boolean(formErrors.body)}
                   rows={12}
@@ -275,8 +276,9 @@ function AdminNewsForm({
                   type="text"
                   value={caption}
                   onChange={(event) => {
-                    setCaption(event.target.value);
+                    setCaption(event.target.value.slice(0, 50));
                   }}
+                  maxLength={50}
                   placeholder="Enter image caption"
                   disabled={saving}
                   className={`${FIELD} h-11`}
@@ -492,9 +494,8 @@ function AdminNewsForm({
                     id="news-author"
                     type="text"
                     value={author}
-                    onChange={(event) => {
-                      setAuthor(event.target.value);
-                    }}
+                    onChange={(e) => setAuthor(e.target.value.slice(0, 20))}
+                    maxLength={20}
                     placeholder="Enter author name"
                     disabled={saving}
                     className={SIDE_FIELD}
@@ -536,7 +537,7 @@ function AdminNewsForm({
 
                         <span className="mt-0.5 block text-sm leading-5 text-slate-500">
                           {hasFeatured
-                            ? 'Show this article as featured news.'
+                            ? 'Show this news as featured news.'
                             : 'Add a featured image before marking this news as featured.'}
                         </span>
                       </span>
@@ -559,7 +560,7 @@ function AdminNewsForm({
                         </span>
 
                         <span className="mt-0.5 block text-sm leading-5 text-slate-500">
-                          Make this article visible immediately.
+                          Make this news visible immediately.
                         </span>
                       </span>
                     </label>
@@ -568,6 +569,14 @@ function AdminNewsForm({
 
                 {/* BUTTONS */}
                 <div className="border-t border-slate-200 pt-5">
+                  {error && (
+                    <div
+                      role="alert"
+                      className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium leading-5 text-red-700">
+                      {error}
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-3">
                     <button
                       type="button"

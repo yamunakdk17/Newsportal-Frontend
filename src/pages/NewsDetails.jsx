@@ -24,9 +24,12 @@ const getImages = (item) => {
 
   const main = getImageUrl(item?.featured_image) || all[0] || '';
 
+  const gallery = all.filter((url) => url !== main);
+
   return {
     main,
-    gallery: all.filter((url) => url !== main),
+    gallery,
+    total: main ? 1 + gallery.length : gallery.length,
   };
 };
 
@@ -155,7 +158,7 @@ function NewsDetails() {
     },
   });
 
-  const { main: image, gallery } = getImages(article);
+  const { main: image, gallery, total } = getImages(article);
 
   const paragraphs = getParagraphs(article);
 
@@ -225,13 +228,13 @@ function NewsDetails() {
 
                 <div className="flex w-full max-w-[1200px] flex-col items-start gap-4 sm:gap-5">
                   {image && (
-                    <motion.div {...fadeUp(0.15)} className="w-full">
+                    <motion.div {...fadeUp(0.15)} className="w-full min-w-0">
                       <AspectRatio
-                        ratio={1560 / 514}
-                        className="w-full overflow-hidden bg-neutral-200">
+                        ratio={total === 1 ? 1560 / 700 : 1560 / 514}
+                        className="w-full overflow-hidden bg-[#DDE0E3]">
                         <img
                           src={image}
-                          alt={article.title}
+                          alt={article.title || ''}
                           className="h-full w-full object-cover"
                         />
                       </AspectRatio>
@@ -241,20 +244,20 @@ function NewsDetails() {
                   {gallery.length > 0 && (
                     <motion.ul
                       {...fadeUp(0.2)}
-                      className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-                      {gallery.map((url) => (
-                        <li key={url}>
+                      className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+                      {gallery.map((url, index) => (
+                        <li key={`${url}-${index}`} className="min-w-0">
                           <button
                             type="button"
                             onClick={() => setPreview(url)}
                             aria-label="View image"
-                            className="group block w-full cursor-zoom-in">
+                            className="group block w-full min-w-0 cursor-zoom-in">
                             <AspectRatio
                               ratio={768 / 450}
-                              className="w-full overflow-hidden">
+                              className="w-full overflow-hidden bg-[#DDE0E3]">
                               <img
                                 src={url}
-                                alt=""
+                                alt={`${article.title || 'News'} image ${index + 2}`}
                                 loading="lazy"
                                 className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
                               />
@@ -289,7 +292,7 @@ function NewsDetails() {
                     {paragraphs.map((text, index) => (
                       <p
                         key={index}
-                        className="w-full max-w-full whitespace-normal break-words break-all text-left text-base font-normal leading-[1.85] tracking-normal text-[#333333] sm:text-[17px] md:text-lg lg:text-lg xl:text-[19px]">
+                        className="w-full min-w-0 break-words whitespace-pre-wrap text-left text-base font-normal leading-[1.85] tracking-normal text-[#333333] [overflow-wrap:anywhere] sm:text-[17px] md:text-lg lg:text-lg xl:text-[19px]">
                         {text}
                       </p>
                     ))}

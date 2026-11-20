@@ -252,29 +252,20 @@ import { getImageUrl } from '@/lib/getImageUrl';
 import { formatNepaliDate } from '@/lib/nepaliDate';
 
 const titleClass =
-  "font-['Mukta',sans-serif] font-bold leading-[1.2] tracking-[0.002em] text-black transition-colors group-hover:underline underline-offset-4";
+  "font-['Mukta',sans-serif] font-bold leading-[1.2] tracking-[0.002em] text-black";
 
 const excerptClass =
   "font-['Mukta',sans-serif] font-normal leading-[1.45] tracking-[0.002em] text-[#4A4E54]";
 
-const SIDE_TITLE_CLAMP = 'line-clamp-3';
-const MAIN_TITLE_CLAMP = 'line-clamp-2';
+const TITLE_CLAMP = 'line-clamp-2';
+const EXCERPT_CLAMP = 'line-clamp-3';
 
 const dateClass =
   "flex min-h-5 w-fit items-center justify-start gap-1.5 font-['Mukta',sans-serif] text-[13px] font-normal text-[#6B7280] sm:text-sm";
 
 const getStoryDate = (story) => story?.published_at || story?.created_at || null;
 
-function Card({
-  story,
-  ratio,
-  variants,
-  getImageUrl,
-  onSelect,
-  className = '',
-  titleClamp = SIDE_TITLE_CLAMP,
-  isMain = false,
-}) {
+function Card({ story, ratio, variants, getImageUrl, onSelect, className = '' }) {
   const src = getImageUrl(story);
   const storyDate = getStoryDate(story);
   const date = formatNepaliDate(storyDate);
@@ -311,19 +302,13 @@ function Card({
 
       <div className="mt-3 w-full">
         <h3
-          className={`${titleClass} ${titleClamp} ${
-            isMain
-              ? 'text-base sm:text-lg xl:text-xl 2xl:text-[22px]'
-              : 'text-base sm:text-lg xl:text-xl 2xl:text-[22px]'
-          }`}>
+          className={`${titleClass} ${TITLE_CLAMP} text-base sm:text-lg xl:text-xl 2xl:text-[22px]`}>
           {story.title}
         </h3>
 
         {excerpt && (
           <p
-            className={`mt-2 line-clamp-3 w-full overflow-hidden text-justify text-sm sm:text-base ${
-              isMain ? 'xl:text-lg' : 'xl:text-base'
-            } ${excerptClass}`}>
+            className={`mt-2 ${EXCERPT_CLAMP} w-full overflow-hidden text-justify text-sm sm:text-base xl:text-lg ${excerptClass}`}>
             {excerpt}
           </p>
         )}
@@ -455,7 +440,6 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           variants={item}
           getImageUrl={getImageurl}
           onSelect={onSelect}
-          titleClamp={SIDE_TITLE_CLAMP}
           className="md:col-start-1 md:row-start-2 lg:col-start-1 lg:row-start-1"
         />
       )}
@@ -466,9 +450,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
         variants={item}
         getImageUrl={getImageurl}
         onSelect={onSelect}
-        titleClamp={MAIN_TITLE_CLAMP}
-        isMain
-        className="order-first md:order-none md:col-span-2 md:col-start-1 md:row-start-1 lg:col-span-1 lg:col-start-2"
+        className="order-first md:order-0 md:col-span-2 md:col-start-1 md:row-start-1 lg:col-span-1 lg:col-start-2"
       />
 
       {right && (
@@ -478,7 +460,6 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           variants={item}
           getImageUrl={getImageurl}
           onSelect={onSelect}
-          titleClamp={SIDE_TITLE_CLAMP}
           className="md:col-start-2 md:row-start-2 lg:col-start-3 lg:row-start-1"
         />
       )}

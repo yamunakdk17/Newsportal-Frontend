@@ -298,12 +298,11 @@ const getAuthor = (story) => {
 
   return typeof author === 'string' ? author : author.name || '';
 };
-
 const SIZE = {
-  heading: 'text-[clamp(28px,2.083vw,40px)] leading-[1.2]',
-  title: 'text-[clamp(19px,1.25vw,24px)] leading-[1.35]',
-  meta: 'text-[clamp(14px,0.833vw,16px)] leading-[1.4]',
-  excerpt: 'text-[clamp(16px,0.9375vw,18px)] leading-[1.55]',
+  heading: 'text-2xl sm:text-3xl lg:text-4xl 2xl:text-[40px] leading-[1.2]',
+  title: 'text-base sm:text-lg lg:text-xl 2xl:text-[22px] leading-[1.3]',
+  meta: 'text-xs sm:text-sm lg:text-[15px] leading-[1.4]',
+  excerpt: 'text-sm sm:text-base lg:text-[17px] leading-[1.5]',
 };
 
 const gridClass = 'grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4';
@@ -508,13 +507,13 @@ export default function Trending({ title = 'Trending News', onSelect, newsData }
   return (
     <section
       aria-labelledby="trending-heading"
-      className="mx-auto flex w-full max-w-[1920px] flex-col items-start gap-6 px-4 py-10 sm:px-6 sm:py-12 md:px-10 lg:px-16 xl:gap-8 xl:px-[120px] xl:py-20">
+      className="mx-auto flex w-full max-w-[1920px] flex-col items-start gap-5 px-4 py-7 sm:px-6 sm:py-8 md:px-10 lg:px-16 xl:gap-7 xl:px-[120px] xl:py-12">
+      {' '}
       <h2
         id="trending-heading"
         className={`font-['Mukta',sans-serif] font-bold tracking-[0.002em] text-[#16181A] ${SIZE.heading}`}>
         {title}
       </h2>
-
       {loading ? (
         <div className={`${gridClass} w-full`}>
           {[0, 1, 2, 3].map((i) => (

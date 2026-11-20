@@ -674,7 +674,7 @@ export default function Categories() {
                           <span className="font-medium text-[#363B42]">
                             "{deleteCategory.name}"
                           </span>
-                          ? This action cannot be undone.
+                          ?
                         </p>
                       </div>
 

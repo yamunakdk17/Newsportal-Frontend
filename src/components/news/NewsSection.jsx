@@ -296,37 +296,82 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
 
   const sourceNews = Array.isArray(newsData) ? newsData : news;
 
-  const filteredNews = sourceNews.filter((item) => {
-    if (!isPublishedNews(item)) {
-      return false;
-    }
+  // const filteredNews = sourceNews.filter((item) => {
+  //   if (!isPublishedNews(item)) {
+  //     return false;
+  //   }
 
-    if (selectedCategory === 'All') {
-      return true;
-    }
+  //   if (selectedCategory === 'All') {
+  //     return true;
+  //   }
 
-    const categoryValues = [
-      item.category?.id,
-      item.category_id,
-      item.category?.name,
-      item.category?.slug,
-      item.category_slug,
-    ]
-      .filter((value) => value !== null && value !== undefined)
-      .map((value) => String(value).toLowerCase());
+  //   const categoryValues = [
+  //     item.category?.id,
+  //     item.category_id,
+  //     item.category?.name,
+  //     item.category?.slug,
+  //     item.category_slug,
+  //   ]
+  //     .filter((value) => value !== null && value !== undefined)
+  //     .map((value) => String(value).toLowerCase());
 
-    const selectedValues = [
-      selectedCategory?.id,
-      selectedCategory?.name,
-      selectedCategory?.slug,
-    ]
-      .filter((value) => value !== null && value !== undefined)
-      .map((value) => String(value).toLowerCase());
+  //   const selectedValues = [
+  //     selectedCategory?.id,
+  //     selectedCategory?.name,
+  //     selectedCategory?.slug,
+  //   ]
+  //     .filter((value) => value !== null && value !== undefined)
+  //     .map((value) => String(value).toLowerCase());
 
-    return selectedValues.some((value) => categoryValues.includes(value));
-  });
+  //   return selectedValues.some((value) => categoryValues.includes(value));
+  // });
 
-  const getImageurl = (item) => getImageUrl(item?.featured_image || item?.images?.[0]);
+  const filteredNews = sourceNews
+    .filter((item) => {
+      if (!isPublishedNews(item)) {
+        return false;
+      }
+
+      if (selectedCategory === 'All') {
+        return true;
+      }
+
+      const categoryValues = [
+        item.category?.id,
+        item.category_id,
+        item.category?.name,
+        item.category?.slug,
+        item.category_slug,
+      ]
+        .filter((value) => value !== null && value !== undefined)
+        .map((value) => String(value).toLowerCase());
+
+      const selectedValues = [
+        selectedCategory?.id,
+        selectedCategory?.name,
+        selectedCategory?.slug,
+      ]
+        .filter((value) => value !== null && value !== undefined)
+        .map((value) => String(value).toLowerCase());
+
+      return selectedValues.some((value) => categoryValues.includes(value));
+    })
+    .sort((a, b) => {
+      const priorityOrder = {
+        high: 1,
+        medium: 2,
+        low: 3,
+      };
+
+      const priorityA = priorityOrder[String(a.priority || '').toLowerCase()] || 4;
+
+      const priorityB = priorityOrder[String(b.priority || '').toLowerCase()] || 4;
+
+      return priorityA - priorityB;
+    })
+    .slice(0, 4);
+
+  const getItemImage = (item) => getImageUrl(item?.featured_image || item?.images?.[0]);
 
   const goToNews = (item) => {
     if (item.slug) {
@@ -389,9 +434,9 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
               mainNews.slug ? 'cursor-pointer' : ''
             }`}>
             <div className="aspect-[972/540] w-full overflow-hidden bg-[#DDE0E3]">
-              {getImageurl(mainNews) ? (
+              {getItemImage(mainNews) ? (
                 <img
-                  src={getImageurl(mainNews)}
+                  src={getItemImage(mainNews)}
                   alt={mainNews.title || ''}
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
@@ -410,7 +455,7 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
 
             {mainNews.excerpt && (
               <p
-                className={`mt-1.5 line-clamp-3 overflow-hidden font-normal leading-[1.5] text-[#4A4E54] ${SIZE.mainExcerpt}`}>
+                className={`mt-1.5 line-clamp-2 overflow-hidden font-normal leading-[1.5] text-[#4A4E54] ${SIZE.mainExcerpt}`}>
                 {mainNews.excerpt}
               </p>
             )}
@@ -438,9 +483,9 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
                   item.slug ? 'cursor-pointer' : ''
                 }`}>
                 <div className="aspect-[260/200] w-[38%] shrink-0 overflow-hidden bg-[#DDE0E3]">
-                  {getImageurl(item) ? (
+                  {getItemImage(item) ? (
                     <img
-                      src={getImageurl(item)}
+                      src={getItemImage(item)}
                       alt={item.title || ''}
                       loading="lazy"
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
@@ -460,7 +505,7 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
 
                   {item.excerpt && (
                     <p
-                      className={`mt-1.5 line-clamp-3 overflow-hidden font-normal leading-[1.45] text-[#4A4E54] ${SIZE.sideExcerpt}`}>
+                      className={`mt-1.5 line-clamp-2 overflow-hidden font-normal leading-[1.45] text-[#4A4E54] ${SIZE.sideExcerpt}`}>
                       {item.excerpt}
                     </p>
                   )}

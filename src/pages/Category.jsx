@@ -147,7 +147,7 @@ function StoryRow({ story, index, variants, onSelect }) {
       <div className="flex min-w-0 flex-col items-start gap-4 font-['Mukta',sans-serif] tracking-[0.002em] sm:gap-5 lg:gap-6">
         <h2
           className="
-      line-clamp-3
+      line-clamp-2
       w-full
       text-lg
       font-bold
@@ -479,7 +479,8 @@ function Category() {
     <>
       <Header />
 
-      <main className="mx-auto flex w-full max-w-[1920px] flex-col items-start px-4 pb-12 sm:px-6 sm:pb-14 md:px-10 lg:px-16 xl:px-[120px] xl:pb-20">
+      <main className="mx-auto flex w-full max-w-[1920px] flex-col items-start px-4 pb-6 sm:px-6 sm:pb-8 md:px-10 lg:px-16 xl:px-[120px] xl:pb-10">
+        {' '}
         <motion.div
           initial={
             reduce
@@ -540,7 +541,6 @@ function Category() {
 
           <NewsDateFilter value={selectedDate} onChange={changeDate} />
         </motion.div>
-
         {selectedDate && (
           <div className="mt-4 flex items-center gap-2 font-['Mukta',sans-serif] text-sm text-[#555B63] sm:text-base">
             <CalendarDays className="size-4 text-[#164B99]" />
@@ -548,8 +548,8 @@ function Category() {
             <span>{formatNepaliDate(selectedDate)} का समाचार</span>
           </div>
         )}
-
-        <div className="mt-8 flex w-full flex-col gap-8 sm:mt-10 sm:gap-10 md:mt-12 xl:mt-14 xl:gap-12">
+        <div className="mt-5 flex w-full flex-col gap-5 sm:mt-6 sm:gap-6 md:mt-7 xl:mt-8 xl:gap-8">
+          {' '}
           {loading &&
             [0, 1, 2].map((index) => (
               <div
@@ -576,7 +576,6 @@ function Category() {
                 </div>
               </div>
             ))}
-
           {!loading && error && (
             <div className="flex flex-col items-center gap-4 py-16 text-center">
               <p className="font-['Mukta',sans-serif] text-base text-red-500 sm:text-lg">
@@ -589,7 +588,6 @@ function Category() {
               </Button>
             </div>
           )}
-
           {!loading && !error && news.length === 0 && (
             <div className="flex flex-col items-center py-16 text-center">
               <CalendarDays className="mb-3 size-8 text-[#164B99]" />
@@ -603,7 +601,6 @@ function Category() {
               </p>
             </div>
           )}
-
           {!loading && !error && news.length > 0 && (
             <motion.div
               key={`${categoryId}-${page}-${selectedDate || 'all'}`}
@@ -622,7 +619,6 @@ function Category() {
               ))}
             </motion.div>
           )}
-
           {!loading && !error && (
             <Pager page={page} totalPages={totalPages} onChange={changePage} />
           )}
@@ -633,7 +629,7 @@ function Category() {
         <Banner />
       </div>
 
-      <section className="mt-10 border-t border-[#E1E4E8] pt-10 sm:mt-12 sm:pt-12 xl:mt-14 xl:pt-16">
+      <section className="mt-5 border-t border-[#E1E4E8] pt-5 sm:mt-6 sm:pt-6 xl:mt-8 xl:pt-8">
         <Trending />
       </section>
 
