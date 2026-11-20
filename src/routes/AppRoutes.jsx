@@ -10,6 +10,7 @@ import AdminNewsRecovery from '@/pages/AdminNewsRecovery';
 import AdminCategories from '@/pages/AdminCategories';
 import AdminBanners from '@/pages/AdminBanners';
 import AdminTeam from '@/pages/AdminTeam';
+import AdminTeamRecovery from '@/pages/AdminTeamRecovery';
 
 import AdminAuthGuard from '@/components/auth/AdminAuthGuard';
 
@@ -34,6 +35,8 @@ export default function AppRoutes() {
         <Route path="/admin/banners" element={<AdminBanners />} />
 
         <Route path="/admin/team" element={<AdminTeam />} />
+
+        <Route path="/admin/team/recovery" element={<AdminTeamRecovery />} />
       </Route>
     </Routes>
   );

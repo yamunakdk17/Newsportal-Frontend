@@ -1,13 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Plus, Search, Pencil, Trash2, X, RefreshCw, LoaderCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+  X,
+  RefreshCw,
+  LoaderCircle,
+  RotateCcw,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
+import NotificationToast from '@/components/admin/NotificationToast';
 
 import api from '@/services/api';
+import { getAdminUsers, isActiveAdmin } from '@/lib/adminUsers';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 
 const GRID =
@@ -65,31 +77,8 @@ function getInitialForm() {
   };
 }
 
-function NotificationToast({ notification, reduce }) {
-  return (
-    <AnimatePresence>
-      {notification.message && (
-        <motion.div
-          initial={reduce ? false : { opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 6 }}
-          transition={{ duration: 0.16, ease: 'easeOut' }}
-          className={`flex w-full items-start justify-between gap-3 rounded-xl border bg-white px-3 py-2 shadow-sm ${
-            notification.type === 'error'
-              ? 'border-red-200 border-l-4 border-l-[#F5365C]'
-              : 'border-[#EEF0F2]'
-          }`}>
-          <p role="alert" className="pt-0.5 text-xs font-medium leading-[1.4] text-[#981733]">
-            {notification.message}
-          </p>
-
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
 export default function Team() {
+  const navigate = useNavigate();
   const reduce = useReducedMotion();
 
   const [members, setMembers] = useState([]);
@@ -116,6 +105,10 @@ export default function Team() {
     setNotification({ type: 'error', message });
   };
 
+  const showSuccessNotification = (message) => {
+    setNotification({ type: 'success', message });
+  };
+
   const clearNotification = () => {
     setNotification({ type: 'error', message: '' });
   };
@@ -136,11 +129,11 @@ export default function Team() {
 
       console.log('Admins response:', response.data);
 
-      const list = response.data?.data ?? [];
+      if (response.data?.success === false) {
+        throw new Error(response.data?.message || 'Unable to load team members.');
+      }
 
-      const activeMembers = Array.isArray(list)
-        ? list.filter((member) => member.deleted_at === null)
-        : [];
+      const activeMembers = getAdminUsers(response).filter(isActiveAdmin);
 
       setMembers(activeMembers);
     } catch (err) {
@@ -294,7 +287,7 @@ export default function Team() {
 
   // CONFIRM DELETE
   const handleDelete = async () => {
-    if (!memberToDelete) return;
+    if (!memberToDelete?.id || deletingId !== null) return;
 
     if (isSuperAdmin(memberToDelete)) {
       showErrorNotification('Super Admin cannot be deleted.');
@@ -306,20 +299,35 @@ export default function Team() {
       setError('');
       clearNotification();
 
-      const response = await api.delete(`/admin/admins/${memberToDelete.id}`);
+      const response = await api.delete(
+        `/admin/admins/${encodeURIComponent(memberToDelete.id)}`,
+      );
 
       console.log('Delete admin response:', response.data);
+
+      if (response.data?.success === false) {
+        showErrorNotification(response.data?.message || 'Unable to delete member.');
+        return;
+      }
+
+      const deletedUser = response.data?.data?.user ?? response.data?.data;
+
+      if (
+        String(deletedUser?.id ?? '') === String(memberToDelete.id) &&
+        deletedUser.deleted_at === null
+      ) {
+        showErrorNotification('The user is still active according to the server.');
+        return;
+      }
+
+      setMembers((current) =>
+        current.filter((member) => member.id !== memberToDelete.id),
+      );
 
       // Close confirmation after successful deletion.
       setDeleteConfirmOpen(false);
       setMemberToDelete(null);
-      clearNotification();
-
-      // Backend remains the source of truth.
-      // Fetch the latest admin list.
-      await fetchMembers({
-        showLoader: false,
-      });
+      showSuccessNotification('User deleted successfully');
     } catch (err) {
       console.error('Delete admin error:', err);
 
@@ -397,6 +405,15 @@ export default function Team() {
                 <Button
                   type="button"
                   variant="outline"
+                  onClick={() => navigate('/admin/team/recovery')}
+                  className="h-9 gap-1.5 rounded-xl border-[#D8DBDF] bg-white px-3 text-xs text-[#4A4E54] shadow-none hover:bg-slate-50">
+                  <RotateCcw className="size-3.5" />
+                  Recovery
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setError('');
 
@@ -435,6 +452,10 @@ export default function Team() {
                   <X className="size-3.5" />
                 </button>
               </div>
+            )}
+
+            {!modalOpen && !deleteConfirmOpen && (
+              <NotificationToast notification={notification} reduce={reduce} />
             )}
 
             {/* MAIN */}
@@ -835,7 +856,7 @@ export default function Team() {
                   </h2>
 
                   <p className="mt-2 text-xs leading-[1.5] text-[#4A4E54]">
-                    You are about to permanently delete{' '}
+                    You are about to move{' '}
                     <span className="font-semibold text-[#16181A]">
                       {memberToDelete.name}
                     </span>
@@ -843,7 +864,7 @@ export default function Team() {
                   </p>
 
                   <p className="mt-1 text-[11px] text-[#9AA0A8]">
-                    This action cannot be undone.
+                    This user can be restored from Recovery.
                   </p>
                 </div>
 

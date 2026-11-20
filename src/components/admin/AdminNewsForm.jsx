@@ -31,13 +31,11 @@ function AdminNewsForm({
   isFeatured,
   setIsFeatured,
 
-  // New (not saved yet) images
   images,
   featuredImage,
   imagePreviews,
   featuredPreview,
 
-  // Saved images that are still active (already filtered by the page)
   existingFeaturedImage,
   existingImages,
   removeExistingFeaturedImage,
@@ -74,32 +72,36 @@ function AdminNewsForm({
 
   const ERROR = 'text-sm font-medium leading-[1.5] text-[#981733]';
 
-  // X button at the top-right of a big preview
   const REMOVE =
     'absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-white text-slate-700 shadow-md outline-none transition hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-[#2168CD] disabled:opacity-60';
 
-  // X button at the top-right of a small thumbnail
   const THUMB_REMOVE =
     'absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-white text-slate-700 shadow-md outline-none transition hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-[#2168CD] disabled:opacity-60';
 
-  /*
-   * Same logic as the page, so the form and the page always agree.
-   */
   const getImagePath = (image) =>
     typeof image === 'string'
       ? image
       : image?.path || image?.url || image?.image || image?.image_path || '';
 
-  const getImageId = (image) => image?.id ?? getImagePath(image);
+  const getImageId = (image) => {
+    if (!image || typeof image !== 'object') {
+      return null;
+    }
 
+    return (
+      image.id ??
+      image.image_id ??
+      image.imageId ??
+      image.media_id ??
+      image.mediaId ??
+      null
+    );
+  };
   const safeExistingImages = Array.isArray(existingImages) ? existingImages : [];
 
   const hasOldFeatured = Boolean(existingFeaturedImage);
 
-  // Will the news have a featured image after saving?
   const hasFeatured = Boolean(featuredPreview) || hasOldFeatured;
-
-  // Saved images that are still active + new images
   const totalImages = safeExistingImages.length + images.length;
 
   const handleRemoveFeaturedImage = () => {
@@ -110,10 +112,17 @@ function AdminNewsForm({
     }
   };
 
+  const handleRemoveImage = (index) => {
+    removeImage(index);
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-0 backdrop-blur-[2px] sm:p-4 lg:left-[250px] xl:left-[270px]">
       <div className="flex h-full max-h-screen w-full flex-col overflow-hidden rounded-none bg-white shadow-2xl sm:h-auto sm:max-h-[94vh] sm:rounded-2xl">
-        {/* HEADER */}
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
           <div className="min-w-0">
             <h2 className="truncate text-xl font-bold text-[#16181A] sm:text-2xl">
@@ -123,7 +132,7 @@ function AdminNewsForm({
             <p className="mt-1 text-sm text-slate-500 sm:text-base">
               {editingNews
                 ? 'Update the news information.'
-                : 'Create and publish a new news .'}
+                : 'Create and publish a new news.'}
             </p>
           </div>
 
@@ -136,15 +145,12 @@ function AdminNewsForm({
           </button>
         </div>
 
-        {/* FORM BODY */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <form
             onSubmit={editingNews ? handleUpdateNews : handleCreateNews}
             noValidate
             className="grid grid-cols-1 gap-5 p-4 pb-8 sm:gap-6 sm:p-6 sm:pb-8 xl:grid-cols-[minmax(0,1fr)_330px] xl:gap-7">
-            {/* MAIN FORM */}
             <section className="order-1 flex min-w-0 flex-col gap-5 xl:order-1">
-              {/* TITLE */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="news-title" className={LABEL}>
                   Title
@@ -156,14 +162,13 @@ function AdminNewsForm({
                   type="text"
                   value={title}
                   onChange={(e) => {
-                    setTitle(e.target.value.slice(0, 50));
+                    setTitle(e.target.value);
 
                     setFormErrors((prev) => ({
                       ...prev,
                       title: '',
                     }));
                   }}
-                  maxLength={50}
                   placeholder="Enter news title"
                   disabled={saving}
                   aria-invalid={Boolean(formErrors.title)}
@@ -173,7 +178,6 @@ function AdminNewsForm({
                 {formErrors.title && <p className={ERROR}>{formErrors.title}</p>}
               </div>
 
-              {/* CATEGORY */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="news-category" className={LABEL}>
                   Category
@@ -219,7 +223,6 @@ function AdminNewsForm({
                 )}
               </div>
 
-              {/* DESCRIPTION */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="news-excerpt" className={LABEL}>
                   Description
@@ -228,8 +231,8 @@ function AdminNewsForm({
                 <Textarea
                   id="news-excerpt"
                   value={excerpt}
-                  onChange={(e) => setExcerpt(e.target.value.slice(0, 50))}
-                  maxLength={50}
+                  onChange={(e) => setExcerpt(e.target.value.slice(0, 100))}
+                  maxLength={100}
                   placeholder="Write a short description of the news..."
                   disabled={saving}
                   rows={4}
@@ -237,7 +240,6 @@ function AdminNewsForm({
                 />
               </div>
 
-              {/* BODY */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="news-body" className={LABEL}>
                   Body
@@ -265,7 +267,6 @@ function AdminNewsForm({
                 {formErrors.body && <p className={ERROR}>{formErrors.body}</p>}
               </div>
 
-              {/* IMAGE CAPTION */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="news-caption" className={LABEL}>
                   Image Caption
@@ -275,17 +276,13 @@ function AdminNewsForm({
                   id="news-caption"
                   type="text"
                   value={caption}
-                  onChange={(event) => {
-                    setCaption(event.target.value.slice(0, 50));
-                  }}
-                  maxLength={50}
+                  onChange={(event) => setCaption(event.target.value)}
                   placeholder="Enter image caption"
                   disabled={saving}
                   className={`${FIELD} h-11`}
                 />
               </div>
 
-              {/* FEATURED IMAGE */}
               <div className="flex flex-col gap-1.5">
                 <label className={LABEL}>Featured Image</label>
 
@@ -312,7 +309,6 @@ function AdminNewsForm({
                   <p className={ERROR}>{formErrors.featuredImage}</p>
                 )}
 
-                {/* NEW FEATURED IMAGE */}
                 {featuredPreview && (
                   <div className="relative mt-2 overflow-hidden rounded-xl border border-blue-200 bg-slate-50">
                     <img
@@ -329,14 +325,9 @@ function AdminNewsForm({
                       aria-label="Remove new featured image">
                       <X className="size-4" />
                     </button>
-
-                    {/* <div className="absolute bottom-2 left-2 rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white">
-                      New image
-                    </div> */}
                   </div>
                 )}
 
-                {/* SAVED FEATURED IMAGE */}
                 {!featuredPreview && hasOldFeatured && (
                   <div className="relative mt-2 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                     <img
@@ -360,7 +351,6 @@ function AdminNewsForm({
                   </div>
                 )}
 
-                {/* NO FEATURED IMAGE */}
                 {!hasFeatured && (
                   <div className="mt-2 flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50">
                     <div className="flex flex-col items-center gap-2 text-center text-slate-400">
@@ -372,10 +362,8 @@ function AdminNewsForm({
                 )}
               </div>
 
-              {/* NEWS IMAGES */}
               <div className="flex flex-col gap-1.5">
                 <label className={LABEL}>News Images</label>
-
                 <label className={UPLOAD}>
                   <ImageIcon className="size-5" />
 
@@ -391,38 +379,42 @@ function AdminNewsForm({
                     className="sr-only"
                   />
                 </label>
-
                 <p className="text-sm text-slate-500">
                   Maximum 3 images. Each image must be 5 MB or less.
                 </p>
-
-                {/* SAVED IMAGES: small thumbnails, cross to remove */}
                 {safeExistingImages.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-3">
-                    {safeExistingImages.map((image, index) => (
-                      <div
-                        key={getImageId(image)}
-                        className="relative size-24 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                        <img
-                          src={getImageUrl(getImagePath(image))}
-                          alt={`Existing news image ${index + 1}`}
-                          className="size-full object-cover"
-                        />
+                    {safeExistingImages.map((image, index) => {
+                      const imagePath = getImagePath(image);
+                      const imageId = getImageId(image);
 
-                        <button
-                          type="button"
-                          onClick={() => removeExistingImage(image)}
-                          disabled={saving}
-                          className={THUMB_REMOVE}
-                          aria-label={`Remove existing image ${index + 1}`}>
-                          <X className="size-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                      return (
+                        <div
+                          key={
+                            imageId !== null
+                              ? `existing-image-${imageId}`
+                              : `existing-image-${imagePath}-${index}`
+                          }
+                          className="relative size-24 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                          <img
+                            src={getImageUrl(imagePath)}
+                            alt={`Existing news image ${index + 1}`}
+                            className="size-full object-cover"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => removeExistingImage(image, index)}
+                            disabled={saving}
+                            className={REMOVE}
+                            aria-label={`Remove image ${index + 1}`}>
+                            <X className="size-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-
-                {/* NEW IMAGES */}
                 {imagePreviews.length > 0 && (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {imagePreviews.map((preview, index) => (
@@ -437,7 +429,7 @@ function AdminNewsForm({
 
                         <button
                           type="button"
-                          onClick={() => removeImage(index)}
+                          onClick={() => handleRemoveImage(index)}
                           disabled={saving}
                           className={REMOVE}
                           aria-label={`Remove image ${index + 1}`}>
@@ -450,10 +442,8 @@ function AdminNewsForm({
               </div>
             </section>
 
-            {/* SETTINGS */}
             <aside className="order-2 h-fit rounded-2xl border border-blue-100 bg-blue-50/30 p-4 shadow-sm sm:p-5 xl:sticky xl:top-0 xl:bg-white">
               <div className="flex flex-col gap-5">
-                {/* PRIORITY */}
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="news-priority" className={SIDE_LABEL}>
                     Priority
@@ -484,7 +474,6 @@ function AdminNewsForm({
                   {formErrors.priority && <p className={ERROR}>{formErrors.priority}</p>}
                 </div>
 
-                {/* AUTHOR */}
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="news-author" className={SIDE_LABEL}>
                     Author
@@ -494,29 +483,23 @@ function AdminNewsForm({
                     id="news-author"
                     type="text"
                     value={author}
-                    onChange={(e) => setAuthor(e.target.value.slice(0, 20))}
-                    maxLength={20}
+                    onChange={(e) => setAuthor(e.target.value.slice(0, 30))}
+                    maxLength={30}
                     placeholder="Enter author name"
                     disabled={saving}
                     className={SIDE_FIELD}
                   />
                 </div>
 
-                {/* PUBLISHING */}
                 <div className="rounded-xl border border-slate-200 bg-white p-4">
                   <h3 className="text-base font-semibold text-[#16181A]">Publishing</h3>
 
                   <div className="mt-4 flex flex-col gap-4">
-                    {/* FEATURED NEWS */}
                     <label
                       className={`flex items-start gap-3 ${
                         hasFeatured ? 'cursor-pointer' : 'cursor-not-allowed'
                       }`}>
                       <Checkbox
-                        /*
-                         * Always unchecked when there is no featured image.
-                         * The page also resets isFeatured to false in that case.
-                         */
                         checked={hasFeatured && isFeatured}
                         onCheckedChange={(checked) => {
                           if (!hasFeatured) {
@@ -543,13 +526,10 @@ function AdminNewsForm({
                       </span>
                     </label>
 
-                    {/* PUBLISH NOW */}
                     <label className="flex cursor-pointer items-start gap-3">
                       <Checkbox
                         checked={isPublished}
-                        onCheckedChange={(checked) => {
-                          setIsPublished(Boolean(checked));
-                        }}
+                        onCheckedChange={(checked) => setIsPublished(Boolean(checked))}
                         disabled={saving}
                         className="mt-0.5"
                       />
@@ -567,7 +547,6 @@ function AdminNewsForm({
                   </div>
                 </div>
 
-                {/* BUTTONS */}
                 <div className="border-t border-slate-200 pt-5">
                   {error && (
                     <div
@@ -593,6 +572,7 @@ function AdminNewsForm({
                       {saving ? (
                         <>
                           <LoaderCircle className="size-4 animate-spin" />
+
                           {editingNews ? 'Updating...' : 'Creating...'}
                         </>
                       ) : (

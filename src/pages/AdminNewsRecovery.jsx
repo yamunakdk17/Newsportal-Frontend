@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Image as ImageIcon,
   LoaderCircle,
-  Newspaper,
   RefreshCw,
   RotateCcw,
   X,
@@ -12,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 
 import api from '@/services/api';
 import { getImageUrl } from '@/lib/getImageUrl';
+import { getNewsId, getNewsList, isDeletedNews } from '@/lib/news';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 
 const getImagePath = (image) => {
@@ -48,18 +48,6 @@ const getFeaturedImage = (news) => {
   return '';
 };
 
-const getDeletedNewsList = (responseData) => {
-  if (Array.isArray(responseData)) {
-    return responseData;
-  }
-
-  if (Array.isArray(responseData?.data)) {
-    return responseData.data;
-  }
-
-  return [];
-};
-
 function AdminNewsRecovery() {
   const navigate = useNavigate();
 
@@ -93,7 +81,7 @@ function AdminNewsRecovery() {
       setLoading(true);
       setError('');
 
-      const response = await api.get('/admin/posts/deleted', {
+      const response = await api.get('/admin/posts', {
         params: {
           page: 1,
           per_page: 100,
@@ -105,7 +93,7 @@ function AdminNewsRecovery() {
         return;
       }
 
-      const posts = getDeletedNewsList(response.data?.data);
+      const posts = getNewsList(response).filter(isDeletedNews);
 
       setDeletedNews(posts);
     } catch (error) {
@@ -124,25 +112,39 @@ function AdminNewsRecovery() {
   }, [fetchDeletedNews]);
 
   const handleRestoreNews = async (newsId) => {
-    if (!newsId || restoringId) {
+    const postId =
+      typeof newsId === 'object' ? getNewsId(newsId) : String(newsId ?? '').trim();
+
+    if (!postId || postId === 'undefined' || postId === 'null' || restoringId) {
       return;
     }
 
     try {
-      setRestoringId(newsId);
+      setRestoringId(postId);
       setError('');
       setSuccess('');
 
-      const response = await api.put(`/admin/posts/${newsId}/restore`);
+      const response = await api.patch(
+        `/admin/posts/${encodeURIComponent(postId)}/restore`,
+      );
 
       if (!response.data?.success) {
         showErrorNotification(response.data?.message || 'Unable to restore news.');
         return;
       }
 
-      showSuccessNotification(response.data?.message || 'News restored successfully.');
+      const restoredPost = response.data?.data?.post ?? response.data?.data;
+      const responseHasDeleteState =
+        getNewsId(restoredPost) === postId &&
+        Object.prototype.hasOwnProperty.call(restoredPost || {}, 'deleted_at');
 
-      await fetchDeletedNews();
+      if (responseHasDeleteState && isDeletedNews(restoredPost)) {
+        showErrorNotification('The post is still deleted according to the server.');
+        return;
+      }
+
+      setDeletedNews((current) => current.filter((post) => getNewsId(post) !== postId));
+      showSuccessNotification('News restored successfully');
     } catch (error) {
       console.error('Restore news error:', error);
 
@@ -291,10 +293,13 @@ function AdminNewsRecovery() {
 
                       <tbody className="divide-y divide-slate-100">
                         {deletedNews.map((news) => {
+                          const newsId = getNewsId(news);
                           const imageSrc = getFeaturedImage(news);
 
                           return (
-                            <tr key={news.id} className="transition hover:bg-slate-50/60">
+                            <tr
+                              key={newsId || news.slug}
+                              className="transition hover:bg-slate-50/60">
                               <td className="max-w-[450px] px-5 py-3.5">
                                 <div className="flex items-center gap-3">
                                   <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-slate-100">
@@ -331,9 +336,7 @@ function AdminNewsRecovery() {
 
                               <td className="px-5 py-3.5">
                                 <span className="text-xs text-slate-500">
-                                  {news.deleted_at
-                                    ? new Date(news.deleted_at).toLocaleString()
-                                    : 'Deleted'}
+                                  {new Date(news.deleted_at).toLocaleString()}
                                 </span>
                               </td>
 
@@ -341,18 +344,18 @@ function AdminNewsRecovery() {
                                 <div className="flex justify-end">
                                   <button
                                     type="button"
-                                    onClick={() => handleRestoreNews(news.id)}
-                                    disabled={restoringId === news.id}
+                                    onClick={() => handleRestoreNews(newsId)}
+                                    disabled={restoringId === newsId}
                                     className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#2168CD] px-3.5 text-xs font-semibold text-white transition hover:bg-[#1958B2] disabled:cursor-not-allowed disabled:opacity-60">
-                                    {restoringId === news.id ? (
+                                    {restoringId === newsId ? (
                                       <>
                                         <LoaderCircle className="size-3.5 animate-spin" />
-                                        Recovering...
+                                        Restoring...
                                       </>
                                     ) : (
                                       <>
                                         <RotateCcw className="size-3.5" />
-                                        Recover
+                                        Restore
                                       </>
                                     )}
                                   </button>
@@ -367,10 +370,11 @@ function AdminNewsRecovery() {
 
                   <div className="divide-y divide-slate-100 lg:hidden">
                     {deletedNews.map((news) => {
+                      const newsId = getNewsId(news);
                       const imageSrc = getFeaturedImage(news);
 
                       return (
-                        <div key={news.id} className="p-4 sm:p-5">
+                        <div key={newsId || news.slug} className="p-4 sm:p-5">
                           <div className="flex gap-3">
                             <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
                               {imageSrc ? (
@@ -405,25 +409,23 @@ function AdminNewsRecovery() {
 
                           <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
                             <span className="text-[11px] text-slate-500">
-                              {news.deleted_at
-                                ? new Date(news.deleted_at).toLocaleString()
-                                : 'Deleted'}
+                              {new Date(news.deleted_at).toLocaleString()}
                             </span>
 
                             <button
                               type="button"
-                              onClick={() => handleRestoreNews(news.id)}
-                              disabled={restoringId === news.id}
+                              onClick={() => handleRestoreNews(newsId)}
+                              disabled={restoringId === newsId}
                               className="flex h-8 items-center justify-center gap-1.5 rounded-lg bg-[#2168CD] px-3 text-[11px] font-semibold text-white transition hover:bg-[#1958B2] disabled:cursor-not-allowed disabled:opacity-60">
-                              {restoringId === news.id ? (
+                              {restoringId === newsId ? (
                                 <>
                                   <LoaderCircle className="size-3.5 animate-spin" />
-                                  Recovering...
+                                  Restoring...
                                 </>
                               ) : (
                                 <>
                                   <RotateCcw className="size-3.5" />
-                                  Recover
+                                  Restore
                                 </>
                               )}
                             </button>

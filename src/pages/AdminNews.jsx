@@ -17,14 +17,13 @@ import {
 
 import api from '@/services/api';
 import { getImageUrl } from '@/lib/getImageUrl';
+import { getNewsId, getNewsList, isActiveNews, isDeletedNews } from '@/lib/news';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 import AdminNewsForm from '@/components/admin/AdminNewsForm';
 
 const MAX_NEWS_IMAGES = 3;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const VALID_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-
-const USE_METHOD_SPOOFING = false;
 
 const isTrue = (value) => {
   return value === true || value === 1 || value === '1' || value === 'true';
@@ -73,7 +72,9 @@ const getImageId = (image) => {
     return null;
   }
 
-  return image.id ?? image.image_id ?? null;
+  return (
+    image.id ?? image.image_id ?? image.imageId ?? image.media_id ?? image.mediaId ?? null
+  );
 };
 
 const getFeaturedImageId = (article) => {
@@ -83,7 +84,7 @@ const getFeaturedImageId = (article) => {
     return null;
   }
 
-  return featuredImage.id ?? featuredImage.image_id ?? null;
+  return getImageId(featuredImage);
 };
 
 const isSamePath = (a, b) => {
@@ -172,6 +173,7 @@ function AdminNews() {
   const [isFeatured, setIsFeatured] = useState(false);
 
   const [images, setImages] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
   const [featuredImage, setFeaturedImage] = useState(null);
 
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -206,37 +208,8 @@ function AdminNews() {
     return getImagePath(editingNews.featured_image);
   }, [editingNews, featuredRemoved]);
 
-  const existingGalleryImages = useMemo(() => {
-    if (!editingNews || !Array.isArray(editingNews.images)) {
-      return [];
-    }
-
-    const featuredPath = getImagePath(editingNews.featured_image);
-
-    return editingNews.images.filter((image) => {
-      const imagePath = getImagePath(image);
-
-      if (!imagePath) {
-        return false;
-      }
-
-      if (featuredPath && isSamePath(imagePath, featuredPath)) {
-        return false;
-      }
-
-      const imageId = getImageId(image);
-
-      if (
-        imageId !== null &&
-        imageId !== undefined &&
-        removedImageIds.includes(imageId)
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [editingNews, removedImageIds]);
+  const editingPostId = getNewsId(editingNews);
+  const existingGalleryImages = existingImages;
 
   const hasFeaturedImageNow =
     featuredImage instanceof File || Boolean(existingFeaturedImage);
@@ -261,15 +234,7 @@ function AdminNews() {
         return;
       }
 
-      const responseData = response.data?.data;
-
-      let posts = [];
-
-      if (Array.isArray(responseData)) {
-        posts = responseData;
-      } else if (Array.isArray(responseData?.data)) {
-        posts = responseData.data;
-      }
+      const posts = getNewsList(response).filter(isActiveNews);
 
       setNews(posts);
     } catch (error) {
@@ -347,6 +312,7 @@ function AdminNews() {
     setIsFeatured(false);
 
     setImages([]);
+    setExistingImages([]);
     setFeaturedImage(null);
 
     setImagePreviews([]);
@@ -373,6 +339,16 @@ function AdminNews() {
     resetForm();
 
     setEditingNews(article);
+
+    const featuredPath = getImagePath(article.featured_image);
+    const savedImages = Array.isArray(article.images) ? article.images : [];
+    const galleryImages = savedImages.filter((image) => {
+      const imagePath = getImagePath(image);
+
+      return imagePath && !(featuredPath && isSamePath(imagePath, featuredPath));
+    });
+
+    setExistingImages(galleryImages.slice(0, MAX_NEWS_IMAGES));
 
     setCategoryId(
       article.category_id !== null && article.category_id !== undefined
@@ -447,63 +423,38 @@ function AdminNews() {
     return true;
   };
 
-  const getImageRemoval = useCallback(() => {
-    const savedImages = Array.isArray(editingNews?.images) ? editingNews.images : [];
-
+  const getImageRemovalIds = useCallback(() => {
     const idsToRemove = new Set();
 
     removedImageIds.forEach((imageId) => {
-      if (imageId !== undefined && imageId !== null && imageId !== '') {
-        idsToRemove.add(imageId);
+      if (imageId !== null && imageId !== undefined && imageId !== '') {
+        idsToRemove.add(String(imageId));
       }
     });
 
     if (featuredRemoved) {
-      const oldFeatured = editingNews?.featured_image;
-      const oldFeaturedPath = getImagePath(oldFeatured);
+      const featuredId = getFeaturedImageId(editingNews);
 
-      const featuredImageId = getFeaturedImageId(editingNews);
-
-      if (
-        featuredImageId !== undefined &&
-        featuredImageId !== null &&
-        featuredImageId !== ''
-      ) {
-        idsToRemove.add(featuredImageId);
+      if (featuredId !== null && featuredId !== undefined && featuredId !== '') {
+        idsToRemove.add(String(featuredId));
       }
 
-      if (oldFeaturedPath) {
-        savedImages.forEach((image) => {
-          const imagePath = getImagePath(image);
+      const featuredPath = getImagePath(editingNews?.featured_image);
 
-          if (!isSamePath(imagePath, oldFeaturedPath)) {
-            return;
-          }
+      if (featuredPath && Array.isArray(editingNews?.images)) {
+        editingNews.images.forEach((image) => {
+          if (isSamePath(getImagePath(image), featuredPath)) {
+            const imageId = getImageId(image);
 
-          const imageId = getImageId(image);
-
-          if (imageId !== undefined && imageId !== null && imageId !== '') {
-            idsToRemove.add(imageId);
+            if (imageId !== null && imageId !== undefined && imageId !== '') {
+              idsToRemove.add(String(imageId));
+            }
           }
         });
       }
     }
 
-    const remainingImages = savedImages.filter((image) => {
-      const imageId = getImageId(image);
-
-      if (imageId !== undefined && imageId !== null && imageId !== '') {
-        return !idsToRemove.has(imageId);
-      }
-
-      return true;
-    });
-
-    return {
-      idsToRemove: [...idsToRemove],
-      remainingImages,
-      remainingImagePaths: remainingImages.map(getImagePath).filter(Boolean),
-    };
+    return [...idsToRemove];
   }, [editingNews, featuredRemoved, removedImageIds]);
 
   const buildNewsFormData = () => {
@@ -520,6 +471,9 @@ function AdminNews() {
 
     const hasActiveFeaturedImage =
       featuredImage instanceof File || Boolean(existingFeaturedImage);
+    const retainedImagePaths = existingGalleryImages
+      .map(getImagePath)
+      .filter(Boolean);
 
     formData.append('is_featured', hasActiveFeaturedImage && isFeatured ? '1' : '0');
 
@@ -527,28 +481,31 @@ function AdminNews() {
       formData.append('images[]', file, file.name);
     });
 
+    if (editingPostId) {
+      formData.append('images', JSON.stringify(retainedImagePaths));
+    }
+
     if (featuredImage instanceof File) {
       formData.append('featured_image', featuredImage, featuredImage.name);
     }
 
-    if (editingNews?.id && featuredRemoved && !(featuredImage instanceof File)) {
+    if (editingPostId && featuredRemoved && !(featuredImage instanceof File)) {
       formData.append('featured_image', '');
       formData.append('is_featured', '0');
     }
 
-    if (editingNews?.id) {
-      const { idsToRemove } = getImageRemoval();
+    if (editingPostId) {
+      const idsToRemove = getImageRemovalIds();
 
       idsToRemove.forEach((imageId) => {
-        formData.append('remove_images[]', String(imageId));
+        formData.append('remove_images[]', imageId);
       });
     }
 
     return formData;
   };
-
   const buildNewsPayload = () => {
-    const { idsToRemove } = getImageRemoval();
+    const idsToRemove = getImageRemovalIds();
 
     const hasActiveFeaturedImage =
       featuredImage instanceof File || Boolean(existingFeaturedImage);
@@ -563,9 +520,13 @@ function AdminNews() {
       caption: caption.trim(),
       author: author.trim(),
       is_featured: hasActiveFeaturedImage && isFeatured,
+      images: existingGalleryImages.map(getImagePath).filter(Boolean),
     };
 
-    if (featuredRemoved && !(featuredImage instanceof File)) {
+    if (
+      (featuredRemoved || (editingPostId && !getImagePath(editingNews?.featured_image))) &&
+      !(featuredImage instanceof File)
+    ) {
       payload.featured_image = null;
       payload.is_featured = false;
     }
@@ -628,8 +589,10 @@ function AdminNews() {
     setError('');
     setSuccess('');
 
-    if (!editingNews?.id) {
-      showErrorNotification('No news post selected for editing.');
+    const postId = getNewsId(editingNews);
+
+    if (!postId) {
+      showErrorNotification('Unable to update news: post ID is missing.');
       return;
     }
 
@@ -641,24 +604,24 @@ function AdminNews() {
       setSaving(true);
 
       const hasNewFiles = images.length > 0 || featuredImage instanceof File;
+      const updatePath = `/admin/posts/${encodeURIComponent(postId)}`;
 
-      const requestBody = hasNewFiles ? buildNewsFormData() : buildNewsPayload();
+      console.info('[AdminNews] Update target', {
+        id: editingNews?.id ?? null,
+        post_id: editingNews?.post_id ?? null,
+        resolvedPostId: postId,
+        url: api.getUri({ url: updatePath }),
+      });
 
       let response;
 
-      if (USE_METHOD_SPOOFING) {
-        if (hasNewFiles) {
-          requestBody.append('_method', 'PUT');
-
-          response = await api.post(`/admin/posts/${editingNews.id}`, requestBody);
-        } else {
-          response = await api.post(`/admin/posts/${editingNews.id}`, {
-            ...requestBody,
-            _method: 'PUT',
-          });
-        }
+      if (hasNewFiles) {
+        const formData = buildNewsFormData();
+        response = await api.put(updatePath, formData);
       } else {
-        response = await api.put(`/admin/posts/${editingNews.id}`, requestBody);
+        const payload = buildNewsPayload();
+
+        response = await api.put(updatePath, payload);
       }
 
       if (!response.data?.success) {
@@ -666,7 +629,7 @@ function AdminNews() {
         return;
       }
 
-      const message = response.data.message || 'News updated successfully.';
+      const message = response.data?.message || 'News updated successfully.';
 
       setShowModal(false);
       setEditingNews(null);
@@ -686,8 +649,9 @@ function AdminNews() {
       setSaving(false);
     }
   };
-
   const handlePublishNews = async (postId) => {
+    if (!postId) return;
+
     try {
       setError('');
       setSuccess('');
@@ -703,7 +667,7 @@ function AdminNews() {
 
       setNews((currentNews) =>
         currentNews.map((article) =>
-          article.id === postId
+          getNewsId(article) === String(postId)
             ? {
                 ...article,
                 is_published: true,
@@ -722,7 +686,7 @@ function AdminNews() {
   };
 
   const requestDeleteNews = (article) => {
-    if (!article?.id) {
+    if (!getNewsId(article)) {
       showErrorNotification('Invalid news post.');
       return;
     }
@@ -739,20 +703,43 @@ function AdminNews() {
   };
 
   const handleDeleteNews = async (newsId) => {
-    if (!newsId || deletingId) return;
+    const postId = typeof newsId === 'object' ? getNewsId(newsId) : String(newsId ?? '').trim();
+
+    if (!postId || postId === 'undefined' || postId === 'null' || deletingId) {
+      return;
+    }
 
     try {
-      setDeletingId(newsId);
+      setDeletingId(postId);
       setError('');
       setSuccess('');
 
-      await api.delete(`/admin/posts/${newsId}`);
+      const response = await api.delete(
+        `/admin/posts/${encodeURIComponent(postId)}`,
+      );
 
-      setSuccess('News deleted successfully.');
+      if (!response.data?.success) {
+        showErrorNotification(response.data?.message || 'Unable to delete news.');
+        return;
+      }
 
-      await fetchNews();
+      const deletedPost = response.data?.data?.post ?? response.data?.data;
+      const responseHasDeleteState =
+        getNewsId(deletedPost) === postId &&
+        Object.prototype.hasOwnProperty.call(deletedPost || {}, 'deleted_at');
+
+      if (responseHasDeleteState && !isDeletedNews(deletedPost)) {
+        showErrorNotification('The post is still active according to the server.');
+        return;
+      }
+
+      // The DELETE succeeded. Remove this record from the active collection;
+      // never assign a frontend-generated deleted_at value.
+      setNews((current) => current.filter((post) => getNewsId(post) !== postId));
+      setDeleteTarget(null);
+      showSuccessNotification('News deleted successfully');
     } catch (error) {
-      setError(
+      showErrorNotification(
         error?.response?.data?.message || 'Failed to delete news. Please try again.',
       );
     } finally {
@@ -807,6 +794,11 @@ function AdminNews() {
       })),
     ]);
 
+    setFormErrors((prev) => ({
+      ...prev,
+      images: '',
+    }));
+
     event.target.value = '';
   };
 
@@ -841,7 +833,7 @@ function AdminNews() {
       URL.revokeObjectURL(featuredPreview);
     }
 
-    if (editingNews?.id) {
+    if (editingPostId) {
       setFeaturedRemoved(true);
     }
 
@@ -868,6 +860,11 @@ function AdminNews() {
     setImagePreviews((current) =>
       current.filter((_, imageIndex) => imageIndex !== index),
     );
+
+    setFormErrors((prev) => ({
+      ...prev,
+      images: '',
+    }));
   };
 
   const removeFeaturedImage = () => {
@@ -886,6 +883,8 @@ function AdminNews() {
 
   const removeExistingFeaturedImage = () => {
     setFeaturedRemoved(true);
+    setFeaturedImage(null);
+    setFeaturedPreview('');
     setIsFeatured(false);
 
     setFormErrors((prev) => ({
@@ -894,16 +893,28 @@ function AdminNews() {
     }));
   };
 
-  const removeExistingImage = (image) => {
+  const removeExistingImage = (image, index) => {
     const imageId = getImageId(image);
 
-    if (imageId === undefined || imageId === null || imageId === '') {
-      return;
-    }
+    setExistingImages((current) =>
+      current.filter((currentImage, currentIndex) => {
+        if (currentIndex === index) return false;
 
-    setRemovedImageIds((current) =>
-      current.includes(imageId) ? current : [...current, imageId],
+        return !(
+          imageId !== null &&
+          imageId !== undefined &&
+          String(getImageId(currentImage)) === String(imageId)
+        );
+      }),
     );
+
+    if (imageId !== null && imageId !== undefined && imageId !== '') {
+      setRemovedImageIds((current) =>
+        current.some((removedId) => String(removedId) === String(imageId))
+          ? current
+          : [...current, imageId],
+      );
+    }
   };
 
   const filteredNews = useMemo(() => {
@@ -1003,20 +1014,6 @@ function AdminNews() {
                 </button>
               </div>
             </div>
-            {/*
-            {error && (
-              <div className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
-                <span>{error}</span>
-
-                <button
-                  type="button"
-                  onClick={() => setError('')}
-                  aria-label="Close error"
-                  className="shrink-0">
-                  <X className="size-4" />
-                </button>
-              </div>
-            )} */}
 
             {success && (
               <div className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-green-200 bg-green-50 px-3.5 py-2.5 text-sm font-medium text-green-700">
@@ -1135,6 +1132,7 @@ function AdminNews() {
 
                       <tbody className="divide-y divide-slate-100">
                         {filteredNews.map((article) => {
+                          const articleId = getNewsId(article);
                           const articleImages = getArticleImages(article);
 
                           const featuredSrc = getFeaturedImage(article);
@@ -1145,7 +1143,7 @@ function AdminNews() {
 
                           return (
                             <tr
-                              key={article.id}
+                              key={articleId || article.slug}
                               className="transition hover:bg-slate-50/60">
                               <td className="max-w-[420px] px-5 py-3.5">
                                 <div className="flex items-center gap-3">
@@ -1210,7 +1208,7 @@ function AdminNews() {
                                   {!published && (
                                     <button
                                       type="button"
-                                      onClick={() => handlePublishNews(article.id)}
+                                      onClick={() => handlePublishNews(articleId)}
                                       className="h-7 rounded-lg bg-green-600 px-2.5 text-[11px] font-semibold text-white transition hover:bg-green-700">
                                       Publish
                                     </button>
@@ -1248,10 +1246,10 @@ function AdminNews() {
                                   <button
                                     type="button"
                                     onClick={() => requestDeleteNews(article)}
-                                    disabled={deletingId === article.id}
+                                    disabled={deletingId === articleId}
                                     className="flex size-8.5 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                                     title="Delete">
-                                    {deletingId === article.id ? (
+                                    {deletingId === articleId ? (
                                       <LoaderCircle className="size-3.5 animate-spin" />
                                     ) : (
                                       <Trash2 className="size-3.5" />
@@ -1268,6 +1266,7 @@ function AdminNews() {
 
                   <div className="divide-y divide-slate-100 lg:hidden">
                     {filteredNews.map((article) => {
+                      const articleId = getNewsId(article);
                       const articleImages = getArticleImages(article);
 
                       const featuredSrc = getFeaturedImage(article);
@@ -1275,7 +1274,7 @@ function AdminNews() {
                       const published = isTrue(article.is_published);
 
                       return (
-                        <div key={article.id} className="p-4 sm:p-5">
+                        <div key={articleId || article.slug} className="p-4 sm:p-5">
                           <div className="flex gap-3">
                             <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
                               {featuredSrc ? (
@@ -1317,7 +1316,7 @@ function AdminNews() {
                                 {!published && (
                                   <button
                                     type="button"
-                                    onClick={() => handlePublishNews(article.id)}
+                                    onClick={() => handlePublishNews(articleId)}
                                     className="h-7 rounded-lg bg-green-600 px-2.5 text-[11px] font-semibold text-white transition hover:bg-green-700">
                                     Publish
                                   </button>
@@ -1355,10 +1354,10 @@ function AdminNews() {
                               <button
                                 type="button"
                                 onClick={() => requestDeleteNews(article)}
-                                disabled={deletingId === article.id}
+                                disabled={deletingId === articleId}
                                 className="flex size-8.5 items-center justify-center rounded-lg border border-red-200 text-red-600 disabled:opacity-50"
                                 title="Delete">
-                                {deletingId === article.id ? (
+                                {deletingId === articleId ? (
                                   <LoaderCircle className="size-3.5 animate-spin" />
                                 ) : (
                                   <Trash2 className="size-3.5" />
@@ -1447,7 +1446,7 @@ function AdminNews() {
 
                 <p className="mt-1 break-words text-sm text-slate-500">
                   Are you sure you want to delete &quot;
-                  {deleteTarget.title}&quot;? This cannot be undone.
+                  {deleteTarget.title}&quot;? It will move to Recovery and can be restored.
                 </p>
               </div>
             </div>
@@ -1463,7 +1462,7 @@ function AdminNews() {
 
               <button
                 type="button"
-                onClick={() => handleDeleteNews(deleteTarget.id)}
+                onClick={() => handleDeleteNews(getNewsId(deleteTarget))}
                 disabled={Boolean(deletingId)}
                 className="flex h-10 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60">
                 {deletingId ? (
