@@ -720,7 +720,7 @@ import Banners from '@/components/Banner/Banners';
 import api from '@/services/api';
 import { getNewsList, isPublishedNews } from '@/lib/news';
 
-const NEWS_PER_PAGE = 16;
+const NEWS_PER_PAGE = 8;
 const NEWS_PAGES = 1;
 const STORIES_PER_CATEGORY = 4;
 const MAX_CATEGORY_SECTIONS = 5;
