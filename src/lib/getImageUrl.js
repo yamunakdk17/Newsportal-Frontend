@@ -1,33 +1,73 @@
 const getBackendBaseUrl = () => {
   const apiUrl = String(import.meta.env.VITE_API_URL || '').trim();
+  const targetUrl = String(import.meta.env.VITE_TARGET || '').trim();
 
-  return apiUrl.replace(/\/+$/, '').replace(/\/api$/i, '');
+  if (/^https?:\/\//i.test(apiUrl)) {
+    return apiUrl.replace(/\/+$/, '').replace(/\/api$/i, '');
+  }
+
+  if (import.meta.env.DEV && /^https?:\/\//i.test(targetUrl)) {
+    return targetUrl.replace(/\/+$/, '');
+  }
+
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+
+  return '';
 };
 
-/** Resolve a backend image value to a displayable URL. */
 export const getImageUrl = (image) => {
   if (!image) return '';
 
   const imagePath =
     typeof image === 'string'
       ? image
-      : image?.url || image?.path || image?.image || image?.image_path || '';
+      : image?.url ||
+        image?.path ||
+        image?.image ||
+        image?.image_path ||
+        image?.featured_image ||
+        '';
+
   const value = String(imagePath).trim();
 
   if (!value) return '';
 
-  // Preserve fully qualified URLs returned by the API exactly as provided.
-  if (/^https?:\/\//i.test(value)) return value;
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const url = new URL(value);
 
-  const backendBaseUrl = getBackendBaseUrl();
+      if (
+        import.meta.env.DEV &&
+        (url.hostname === 'localhost' ||
+          url.hostname === '127.0.0.1' ||
+          url.hostname === '192.168.1.118')
+      ) {
+        const backendBaseUrl = getBackendBaseUrl();
+
+        if (backendBaseUrl) {
+          return `${backendBaseUrl}${url.pathname}${url.search}${url.hash}`;
+        }
+      }
+
+      return url.toString();
+    } catch {
+      return value;
+    }
+  }
+
   const cleanPath = value.replace(/^\/+/, '').replace(/\/+$/, '');
 
-  // Normalize storage prefixes so paths like /api/storage/news/a.jpg and
-  // storage/news/a.jpg both resolve to one backend /storage/... URL.
   const storagePath = cleanPath
     .replace(/^(?:api\/)+(?=storage\/)/i, '')
     .replace(/^(?:storage\/)+/i, '');
-  const resolvedPath = `storage/${storagePath}`;
 
-  return backendBaseUrl ? `${backendBaseUrl}/${resolvedPath}` : `/${resolvedPath}`;
+  const backendBaseUrl = getBackendBaseUrl();
+
+  if (!backendBaseUrl) {
+    return `/storage/${storagePath}`;
+  }
+
+  return `${backendBaseUrl}/storage/${storagePath}`;
 };
