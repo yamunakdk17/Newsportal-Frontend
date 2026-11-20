@@ -6,7 +6,7 @@ import NewsDetails from '@/pages/NewsDetails';
 import Login from '@/pages/Login';
 
 import AdminNews from '@/pages/AdminNews';
-import AdminNewsRecovery from '@/pages/admin/AdminNewsRecovery';
+import AdminNewsRecovery from '@/pages/AdminNewsRecovery';
 import AdminCategories from '@/pages/AdminCategories';
 import AdminBanners from '@/pages/AdminBanners';
 import AdminTeam from '@/pages/AdminTeam';
