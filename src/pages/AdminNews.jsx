@@ -41,10 +41,12 @@ const getBackendError = (error) => {
   const backendErrors = error.response?.data?.errors;
 
   if (backendErrors) {
-    const firstError = Object.values(backendErrors)?.[0]?.[0];
+    const messages = Object.values(backendErrors)
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .filter((message) => typeof message === 'string' && message.trim());
 
-    if (firstError) {
-      return firstError;
+    if (messages.length > 0) {
+      return messages.join('\n');
     }
   }
 
@@ -65,26 +67,6 @@ const getImagePath = (image) => {
   }
 
   return image?.path || image?.url || image?.image || image?.image_path || '';
-};
-
-const getImageId = (image) => {
-  if (!image || typeof image !== 'object') {
-    return null;
-  }
-
-  return (
-    image.id ?? image.image_id ?? image.imageId ?? image.media_id ?? image.mediaId ?? null
-  );
-};
-
-const getFeaturedImageId = (article) => {
-  const featuredImage = article?.featured_image;
-
-  if (!featuredImage || typeof featuredImage !== 'object') {
-    return null;
-  }
-
-  return getImageId(featuredImage);
 };
 
 const isSamePath = (a, b) => {
@@ -180,7 +162,7 @@ function AdminNews() {
   const [featuredPreview, setFeaturedPreview] = useState('');
 
   const [featuredRemoved, setFeaturedRemoved] = useState(false);
-  const [removedImageIds, setRemovedImageIds] = useState([]);
+  const [removedImagePaths, setRemovedImagePaths] = useState([]);
 
   const showErrorNotification = useCallback((message) => {
     setError(message);
@@ -319,7 +301,7 @@ function AdminNews() {
     setFeaturedPreview('');
 
     setFeaturedRemoved(false);
-    setRemovedImageIds([]);
+    setRemovedImagePaths([]);
 
     setFormErrors({});
   }, [imagePreviews, featuredPreview]);
@@ -423,39 +405,19 @@ function AdminNews() {
     return true;
   };
 
-  const getImageRemovalIds = useCallback(() => {
-    const idsToRemove = new Set();
-
-    removedImageIds.forEach((imageId) => {
-      if (imageId !== null && imageId !== undefined && imageId !== '') {
-        idsToRemove.add(String(imageId));
-      }
-    });
+  const getImageRemovalPaths = useCallback(() => {
+    const pathsToRemove = new Set(removedImagePaths.filter(Boolean).map(String));
 
     if (featuredRemoved) {
-      const featuredId = getFeaturedImageId(editingNews);
-
-      if (featuredId !== null && featuredId !== undefined && featuredId !== '') {
-        idsToRemove.add(String(featuredId));
-      }
-
       const featuredPath = getImagePath(editingNews?.featured_image);
 
-      if (featuredPath && Array.isArray(editingNews?.images)) {
-        editingNews.images.forEach((image) => {
-          if (isSamePath(getImagePath(image), featuredPath)) {
-            const imageId = getImageId(image);
-
-            if (imageId !== null && imageId !== undefined && imageId !== '') {
-              idsToRemove.add(String(imageId));
-            }
-          }
-        });
+      if (featuredPath) {
+        pathsToRemove.add(featuredPath);
       }
     }
 
-    return [...idsToRemove];
-  }, [editingNews, featuredRemoved, removedImageIds]);
+    return [...pathsToRemove];
+  }, [editingNews, featuredRemoved, removedImagePaths]);
 
   const buildNewsFormData = () => {
     const formData = new FormData();
@@ -471,17 +433,11 @@ function AdminNews() {
 
     const hasActiveFeaturedImage =
       featuredImage instanceof File || Boolean(existingFeaturedImage);
-    const retainedImagePaths = existingGalleryImages.map(getImagePath).filter(Boolean);
-
     formData.append('is_featured', hasActiveFeaturedImage && isFeatured ? '1' : '0');
 
     images.forEach((file) => {
       formData.append('images[]', file, file.name);
     });
-
-    if (editingPostId) {
-      formData.append('images', JSON.stringify(retainedImagePaths));
-    }
 
     if (featuredImage instanceof File) {
       formData.append('featured_image', featuredImage, featuredImage.name);
@@ -493,48 +449,47 @@ function AdminNews() {
     }
 
     if (editingPostId) {
-      const idsToRemove = getImageRemovalIds();
+      const pathsToRemove = getImageRemovalPaths();
 
-      idsToRemove.forEach((imageId) => {
-        formData.append('remove_images[]', imageId);
+      pathsToRemove.forEach((imagePath) => {
+        formData.append('remove_images[]', imagePath);
       });
     }
 
     return formData;
   };
-  const buildNewsPayload = () => {
-    const idsToRemove = getImageRemovalIds();
+  const applyBackendFieldErrors = (error) => {
+    const backendErrors = error.response?.data?.errors;
 
-    const hasActiveFeaturedImage =
-      featuredImage instanceof File || Boolean(existingFeaturedImage);
+    if (!backendErrors || typeof backendErrors !== 'object') {
+      return;
+    }
 
-    const payload = {
-      title: title.trim(),
-      excerpt: excerpt.trim(),
-      body: body.trim(),
-      category_id: Number(categoryId),
-      is_published: isPublished,
-      priority,
-      caption: caption.trim(),
-      author: author.trim(),
-      is_featured: hasActiveFeaturedImage && isFeatured,
-      images: existingGalleryImages.map(getImagePath).filter(Boolean),
+    const fieldMap = {
+      category_id: 'categoryId',
+      featured_image: 'featuredImage',
     };
+    const mappedErrors = {};
 
-    if (
-      (featuredRemoved ||
-        (editingPostId && !getImagePath(editingNews?.featured_image))) &&
-      !(featuredImage instanceof File)
-    ) {
-      payload.featured_image = null;
-      payload.is_featured = false;
+    Object.entries(backendErrors).forEach(([field, value]) => {
+      const targetField = fieldMap[field] || (field.startsWith('images') ? 'images' : field);
+      const messages = (Array.isArray(value) ? value : [value]).filter(
+        (message) => typeof message === 'string' && message.trim(),
+      );
+
+      if (
+        ['title', 'categoryId', 'body', 'featuredImage', 'priority', 'images'].includes(
+          targetField,
+        ) &&
+        messages.length
+      ) {
+        mappedErrors[targetField] = messages.join('\n');
+      }
+    });
+
+    if (Object.keys(mappedErrors).length > 0) {
+      setFormErrors((current) => ({ ...current, ...mappedErrors }));
     }
-
-    if (idsToRemove.length > 0) {
-      payload.remove_images = idsToRemove;
-    }
-
-    return payload;
   };
 
   const handleCreateNews = async (event) => {
@@ -574,7 +529,8 @@ function AdminNews() {
 
       showSuccessNotification(message);
     } catch (error) {
-      console.error('Create news error:', error);
+      console.error('Create news error response:', error.response?.data || error);
+      applyBackendFieldErrors(error);
 
       showErrorNotification(getBackendError(error));
     } finally {
@@ -602,7 +558,6 @@ function AdminNews() {
     try {
       setSaving(true);
 
-      const hasNewFiles = images.length > 0 || featuredImage instanceof File;
       const updatePath = `/admin/posts/${encodeURIComponent(postId)}`;
 
       console.info('[AdminNews] Update target', {
@@ -612,16 +567,8 @@ function AdminNews() {
         url: api.getUri({ url: updatePath }),
       });
 
-      let response;
-
-      if (hasNewFiles) {
-        const formData = buildNewsFormData();
-        response = await api.put(updatePath, formData);
-      } else {
-        const payload = buildNewsPayload();
-
-        response = await api.put(updatePath, payload);
-      }
+      const formData = buildNewsFormData();
+      const response = await api.put(updatePath, formData);
 
       if (!response.data?.success) {
         showErrorNotification(response.data?.message || 'Unable to update news.');
@@ -641,7 +588,8 @@ function AdminNews() {
 
       showSuccessNotification(message);
     } catch (error) {
-      console.error('Update news error:', error);
+      console.error('Update news error response:', error.response?.data || error);
+      applyBackendFieldErrors(error);
 
       showErrorNotification(getBackendError(error));
     } finally {
@@ -892,25 +840,21 @@ function AdminNews() {
   };
 
   const removeExistingImage = (image, index) => {
-    const imageId = getImageId(image);
+    const imagePath = getImagePath(image);
 
     setExistingImages((current) =>
       current.filter((currentImage, currentIndex) => {
         if (currentIndex === index) return false;
 
-        return !(
-          imageId !== null &&
-          imageId !== undefined &&
-          String(getImageId(currentImage)) === String(imageId)
-        );
+        return getImagePath(currentImage) !== imagePath;
       }),
     );
 
-    if (imageId !== null && imageId !== undefined && imageId !== '') {
-      setRemovedImageIds((current) =>
-        current.some((removedId) => String(removedId) === String(imageId))
+    if (imagePath) {
+      setRemovedImagePaths((current) =>
+        current.includes(imagePath)
           ? current
-          : [...current, imageId],
+          : [...current, imagePath],
       );
     }
   };

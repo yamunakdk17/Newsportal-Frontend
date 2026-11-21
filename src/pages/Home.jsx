@@ -884,10 +884,19 @@ function Home() {
     });
   };
 
+  const heroNews = useMemo(
+    () => sortByPriorityThenNewest(news.filter(isFeaturedNews))[0] || null,
+    [news],
+  );
+  const homeSectionNews = useMemo(
+    () => news.filter((item) => item?.slug !== heroNews?.slug),
+    [news, heroNews],
+  );
+
   const categorySections = useMemo(() => {
     const uniqueArticles = new Map();
 
-    news.filter((item) => !isFeaturedNews(item)).forEach((item) => {
+    homeSectionNews.forEach((item) => {
       const identityKey = String(item?.slug);
 
       if (!uniqueArticles.has(identityKey)) {
@@ -926,25 +935,28 @@ function Home() {
         };
       })
       .sort((a, b) => b.newest - a.newest);
-  }, [news, categories]);
+  }, [homeSectionNews, categories]);
 
   const visibleSections = useMemo(
     () => categorySections.slice(0, MAX_CATEGORY_SECTIONS),
     [categorySections],
   );
 
-  // Non-featured articles not already shown in a visible category section.
+  // Stories not already shown in a visible category section.
   const anotherNews = useMemo(() => {
+    const candidates = homeSectionNews;
     const shownIds = new Set(
       visibleSections.flatMap((section) => section.items.map((item) => String(item.slug))),
     );
+    const remaining = sortByPriorityThenNewest(
+      candidates.filter((item) => !shownIds.has(String(item.slug))),
+    );
 
-    return sortByPriorityThenNewest(
-      news.filter(
-        (item) => !isFeaturedNews(item) && !shownIds.has(String(item.slug)),
-      ),
+    return (remaining.length > 0
+      ? remaining
+      : sortByPriorityThenNewest(candidates)
     ).slice(0, 3);
-  }, [news, visibleSections]);
+  }, [homeSectionNews, visibleSections]);
 
   return (
     <>
@@ -962,7 +974,7 @@ function Home() {
         </section>
 
         <section className="my-8">
-          <DailyNews title="Daily Updates" newsData={news} />
+          <DailyNews title="Daily Updates" newsData={homeSectionNews} />
         </section>
 
         {newsLoading && (

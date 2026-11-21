@@ -244,7 +244,7 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarDays } from 'lucide-react';
 
 import api from '@/services/api';
-import { getNewsList, isFeaturedNews, isPublishedNews, sortByPriorityThenNewest } from '@/lib/news';
+import { getNewsList, isPublishedNews, sortByPriorityThenNewest } from '@/lib/news';
 import { getImageUrl } from '@/lib/getImageUrl';
 import { formatNepaliDate } from '@/lib/nepaliDate';
 
@@ -328,7 +328,7 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
 
   const filteredNews = sortByPriorityThenNewest(sourceNews
     .filter((item) => {
-      if (!isPublishedNews(item) || isFeaturedNews(item)) {
+      if (!isPublishedNews(item)) {
         return false;
       }
 

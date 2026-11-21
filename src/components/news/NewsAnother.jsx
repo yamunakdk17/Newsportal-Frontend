@@ -249,7 +249,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import api from '@/services/api';
 import {
   getNewsList,
-  isFeaturedNews,
   isPublishedNews,
   sortByPriorityThenNewest,
 } from '@/lib/news';
@@ -361,7 +360,9 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           },
         });
 
-        setNews(getNewsList(response).filter(isPublishedNews).slice(0, 3));
+        setNews(
+          sortByPriorityThenNewest(getNewsList(response).filter(isPublishedNews)).slice(0, 3),
+        );
       } catch (error) {
         console.error('Unable to load news:', error);
         setNews([]);
@@ -418,9 +419,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   }
 
   const stories = Array.isArray(newsData)
-    ? sortByPriorityThenNewest(
-        newsData.filter((story) => isPublishedNews(story) && !isFeaturedNews(story)),
-      ).slice(0, 3)
+    ? sortByPriorityThenNewest(newsData.filter(isPublishedNews)).slice(0, 3)
     : news;
 
   const [main, left, right] = stories;

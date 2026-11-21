@@ -70,7 +70,7 @@ function AdminNewsForm({
   const UPLOAD =
     'flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#2168CD] bg-blue-50/40 text-base font-medium text-[#2168CD] transition hover:bg-blue-50 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#2168CD]/30';
 
-  const ERROR = 'text-sm font-medium leading-[1.5] text-[#981733]';
+  const ERROR = 'whitespace-pre-line text-sm font-medium leading-[1.5] text-[#981733]';
 
   const REMOVE =
     'absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-white text-slate-700 shadow-md outline-none transition hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-[#2168CD] disabled:opacity-60';
@@ -550,7 +550,7 @@ function AdminNewsForm({
                   {error && (
                     <div
                       role="alert"
-                      className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium leading-5 text-red-700">
+                      className="mb-4 whitespace-pre-line rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium leading-5 text-red-700">
                       {error}
                     </div>
                   )}
