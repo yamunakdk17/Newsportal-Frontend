@@ -718,48 +718,17 @@ import DailyNews from '@/components/news/DailyNews';
 import Banners from '@/components/Banner/Banners';
 
 import api from '@/services/api';
-import { getNewsList, isPublishedNews } from '@/lib/news';
+import {
+  getNewsList,
+  getNewsTime,
+  isFeaturedNews,
+  isPublishedNews,
+  sortByPriorityThenNewest,
+} from '@/lib/news';
 
 const NEWS_PER_PAGE = 8;
-const NEWS_PAGES = 1;
 const STORIES_PER_CATEGORY = 4;
 const MAX_CATEGORY_SECTIONS = 5;
-
-const PRIORITY_RANK = {
-  low: 1,
-  medium: 2,
-  high: 3,
-};
-
-const getArticleTime = (item) => {
-  const value = item?.updated_at || item?.published_at || item?.created_at;
-
-  const timestamp = value ? new Date(value).getTime() : 0;
-
-  return Number.isFinite(timestamp) ? timestamp : 0;
-};
-
-const getArticleId = (item) => String(item?.id ?? item?.slug);
-
-const getPriorityRank = (item) => {
-  const priority = item?.priority;
-
-  if (typeof priority === 'number') {
-    return priority;
-  }
-
-  const value = String(priority ?? '')
-    .trim()
-    .toLowerCase();
-
-  if (Object.hasOwn(PRIORITY_RANK, value)) {
-    return PRIORITY_RANK[value];
-  }
-
-  const numeric = Number(value);
-
-  return Number.isFinite(numeric) ? numeric : 0;
-};
 
 const getArticleCategory = (item, categories) => {
   const rawCategory = item?.category;
@@ -803,7 +772,13 @@ const fetchNewsPage = async (page) => {
     throw new Error(response.data?.message || 'Unable to load news.');
   }
 
-  return getNewsList(response);
+  const payload = response.data?.data;
+  const meta = payload?.meta || response.data?.meta;
+
+  return {
+    items: getNewsList(response),
+    lastPage: Number(meta?.last_page) || 1,
+  };
 };
 
 function Home() {
@@ -847,18 +822,19 @@ function Home() {
       setNewsError('');
 
       try {
-        const pages = Array.from({ length: NEWS_PAGES }, (_, index) => index + 1);
-
-        const results = await Promise.allSettled(pages.map(fetchNewsPage));
-
-        if (results[0].status === 'rejected') {
-          throw results[0].reason;
-        }
-
-        const mergedNews = results
-          .filter((result) => result.status === 'fulfilled')
-          .flatMap((result) => result.value)
-          .filter(isPublishedNews);
+        const firstPage = await fetchNewsPage(1);
+        const otherPages = await Promise.all(
+          Array.from({ length: Math.max(0, firstPage.lastPage - 1) }, (_, index) =>
+            fetchNewsPage(index + 2),
+          ),
+        );
+        const uniqueNews = new Map();
+        [firstPage, ...otherPages].flatMap((page) => page.items).forEach((item) => {
+          if (item?.slug && !uniqueNews.has(String(item.slug))) {
+            uniqueNews.set(String(item.slug), item);
+          }
+        });
+        const mergedNews = [...uniqueNews.values()].filter(isPublishedNews);
 
         if (active) {
           setNews(mergedNews);
@@ -911,10 +887,8 @@ function Home() {
   const categorySections = useMemo(() => {
     const uniqueArticles = new Map();
 
-    news.forEach((item, index) => {
-      const identity = item?.id ?? item?.slug ?? `article-${index}`;
-
-      const identityKey = String(identity);
+    news.filter((item) => !isFeaturedNews(item)).forEach((item) => {
+      const identityKey = String(item?.slug);
 
       if (!uniqueArticles.has(identityKey)) {
         uniqueArticles.set(identityKey, item);
@@ -942,24 +916,13 @@ function Home() {
 
     return [...groups.values()]
       .map((group) => {
-        const sortedByPriority = [...group.items].sort(
-          (a, b) =>
-            getPriorityRank(b) - getPriorityRank(a) ||
-            getArticleTime(b) - getArticleTime(a),
-        );
-
-        const lead = sortedByPriority[0];
-
-        const remaining = group.items
-          .filter((item) => item !== lead)
-          .sort((a, b) => getArticleTime(b) - getArticleTime(a));
-
-        const stories = [lead, ...remaining].slice(0, STORIES_PER_CATEGORY);
+        const sortedStories = sortByPriorityThenNewest(group.items);
+        const stories = sortedStories.slice(0, STORIES_PER_CATEGORY);
 
         return {
           ...group,
           items: stories,
-          newest: Math.max(...group.items.map(getArticleTime)),
+          newest: Math.max(...group.items.map(getNewsTime)),
         };
       })
       .sort((a, b) => b.newest - a.newest);
@@ -970,18 +933,17 @@ function Home() {
     [categorySections],
   );
 
-  // Articles not already shown in a category section, newest first.
-  // Falls back to all news if nothing is left over.
+  // Non-featured articles not already shown in a visible category section.
   const anotherNews = useMemo(() => {
     const shownIds = new Set(
-      visibleSections.flatMap((section) => section.items.map(getArticleId)),
+      visibleSections.flatMap((section) => section.items.map((item) => String(item.slug))),
     );
 
-    const remaining = news
-      .filter((item) => !shownIds.has(getArticleId(item)))
-      .sort((a, b) => getArticleTime(b) - getArticleTime(a));
-
-    return remaining.length > 0 ? remaining : news;
+    return sortByPriorityThenNewest(
+      news.filter(
+        (item) => !isFeaturedNews(item) && !shownIds.has(String(item.slug)),
+      ),
+    ).slice(0, 3);
   }, [news, visibleSections]);
 
   return (

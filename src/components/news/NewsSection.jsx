@@ -244,7 +244,7 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarDays } from 'lucide-react';
 
 import api from '@/services/api';
-import { getNewsList, isPublishedNews } from '@/lib/news';
+import { getNewsList, isFeaturedNews, isPublishedNews, sortByPriorityThenNewest } from '@/lib/news';
 import { getImageUrl } from '@/lib/getImageUrl';
 import { formatNepaliDate } from '@/lib/nepaliDate';
 
@@ -326,9 +326,9 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
   //   return selectedValues.some((value) => categoryValues.includes(value));
   // });
 
-  const filteredNews = sourceNews
+  const filteredNews = sortByPriorityThenNewest(sourceNews
     .filter((item) => {
-      if (!isPublishedNews(item)) {
+      if (!isPublishedNews(item) || isFeaturedNews(item)) {
         return false;
       }
 
@@ -355,21 +355,7 @@ function NewsSection({ selectedCategory, newsData, bottomLine = false }) {
         .map((value) => String(value).toLowerCase());
 
       return selectedValues.some((value) => categoryValues.includes(value));
-    })
-    .sort((a, b) => {
-      const priorityOrder = {
-        high: 1,
-        medium: 2,
-        low: 3,
-      };
-
-      const priorityA = priorityOrder[String(a.priority || '').toLowerCase()] || 4;
-
-      const priorityB = priorityOrder[String(b.priority || '').toLowerCase()] || 4;
-
-      return priorityA - priorityB;
-    })
-    .slice(0, 4);
+    })).slice(0, 4);
 
   const getItemImage = (item) => getImageUrl(item?.featured_image || item?.images?.[0]);
 

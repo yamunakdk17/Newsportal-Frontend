@@ -1,6 +1,31 @@
 export const isTrue = (value) =>
   value === true || value === 1 || value === '1' || value === 'true';
 
+export const isFeaturedNews = (item) => {
+  const value = item?.is_featured;
+
+  return value === true || value === 1 || value === '1' ||
+    String(value ?? '').trim().toLowerCase() === 'true';
+};
+
+export const getPriorityRank = (item) => {
+  const priority = String(item?.priority ?? '').trim().toLowerCase();
+
+  return { high: 3, medium: 2, low: 1 }[priority] || 0;
+};
+
+export const getNewsTime = (item) => {
+  const value = item?.published_at || item?.created_at || item?.updated_at;
+  const timestamp = value ? new Date(value).getTime() : 0;
+
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
+export const sortByPriorityThenNewest = (items) =>
+  [...items].sort(
+    (a, b) => getPriorityRank(b) - getPriorityRank(a) || getNewsTime(b) - getNewsTime(a),
+  );
+
 export const isPublishedNews = (news) =>
   news?.is_published === undefined ||
   news?.is_published === null ||

@@ -5,7 +5,12 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
-import { getNewsList, isPublishedNews } from '@/lib/news';
+import {
+  getNewsList,
+  isFeaturedNews,
+  isPublishedNews,
+  sortByPriorityThenNewest,
+} from '@/lib/news';
 import { getImageUrl } from '@/lib/getImageUrl';
 
 export default function HeroBanner({ onSelect, isLoading = false, newsData }) {
@@ -17,65 +22,20 @@ export default function HeroBanner({ onSelect, isLoading = false, newsData }) {
 
   const heights =
     'min-h-[320px] h-[420px] sm:h-[480px] md:h-[540px] lg:h-[620px] xl:h-[676px]';
-  const getPriorityLevel = (news) => {
-    const priority = String(news?.priority ?? '')
-      .trim()
-      .toLowerCase();
-
-    if (priority === 'high' || priority === '1') {
-      return 3;
-    }
-
-    if (priority === 'medium' || priority === '2') {
-      return 2;
-    }
-
-    if (priority === 'low' || priority === '3') {
-      return 1;
-    }
-
-    return 0;
-  };
-  const getPublishedTime = (news) => {
-    const time = new Date(
-      news?.published_at || news?.created_at || news?.updated_at || 0,
-    ).getTime();
-
-    return Number.isFinite(time) ? time : 0;
-  };
-
   const selectHeroNews = (items) => {
     if (!Array.isArray(items) || items.length === 0) {
       return null;
     }
 
-    const featuredCandidates = items
-      .filter(isPublishedNews)
-      .filter((item) => {
-        const value = item?.is_featured;
-
-        return (
-          value === true ||
-          value === 1 ||
-          value === '1' ||
-          String(value).trim().toLowerCase() === 'true'
-        );
-      })
-      .filter((item) => Boolean(item?.featured_image));
+    const featuredCandidates = items.filter(
+      (item) => isPublishedNews(item) && isFeaturedNews(item),
+    );
 
     if (featuredCandidates.length === 0) {
       return null;
     }
 
-    return [...featuredCandidates].sort((a, b) => {
-      const priorityDifference = getPriorityLevel(b) - getPriorityLevel(a);
-
-      if (priorityDifference !== 0) {
-        return priorityDifference;
-      }
-
-      return getPublishedTime(b) - getPublishedTime(a);
-    })[0];
+    return sortByPriorityThenNewest(featuredCandidates)[0];
   };
 
   useEffect(() => {

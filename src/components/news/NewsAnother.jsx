@@ -247,7 +247,12 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
-import { getNewsList, isPublishedNews } from '@/lib/news';
+import {
+  getNewsList,
+  isFeaturedNews,
+  isPublishedNews,
+  sortByPriorityThenNewest,
+} from '@/lib/news';
 import { getImageUrl } from '@/lib/getImageUrl';
 import { formatNepaliDate } from '@/lib/nepaliDate';
 
@@ -413,7 +418,9 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   }
 
   const stories = Array.isArray(newsData)
-    ? newsData.filter(isPublishedNews).slice(0, 3)
+    ? sortByPriorityThenNewest(
+        newsData.filter((story) => isPublishedNews(story) && !isFeaturedNews(story)),
+      ).slice(0, 3)
     : news;
 
   const [main, left, right] = stories;
