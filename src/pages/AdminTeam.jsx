@@ -36,37 +36,67 @@ const isSuperAdmin = (member) => normalizeRole(member.role) === 'superadmin';
 
 const roleLabel = (member) => (isSuperAdmin(member) ? 'Super-Admin' : 'Admin');
 
-const firstErrorString = (value) => {
-  if (typeof value === 'string' && value.trim()) return value.trim();
+const collectErrorMessages = (value, messages = []) => {
+  if (!value) return messages;
+
+  if (typeof value === 'string') {
+    const message = value.trim();
+
+    if (message) {
+      messages.push(message);
+    }
+
+    return messages;
+  }
+
   if (Array.isArray(value)) {
-    for (const item of value) {
-      const message = firstErrorString(item);
-      if (message) return message;
-    }
+    value.forEach((item) => {
+      collectErrorMessages(item, messages);
+    });
+
+    return messages;
   }
-  if (value && typeof value === 'object') {
-    for (const item of Object.values(value)) {
-      const message = firstErrorString(item);
-      if (message) return message;
-    }
+
+  if (typeof value === 'object') {
+    Object.values(value).forEach((item) => {
+      collectErrorMessages(item, messages);
+    });
   }
-  return '';
+
+  return messages;
 };
-
-const getApiErrorMessage = (err, fallback) => {
+const getApiErrorMessages = (err, fallback) => {
   const data = err?.response?.data;
-  const errorMessage = firstErrorString(err?.message);
+  const fieldMessages = [];
 
-  return (
-    firstErrorString(data?.message) ||
-    firstErrorString(data?.error) ||
-    firstErrorString(data?.errors) ||
-    firstErrorString(typeof data === 'string' ? data : '') ||
-    (errorMessage && !/^request failed with status code \d+$/i.test(errorMessage)
-      ? errorMessage
-      : '') ||
-    fallback
-  );
+  if (data?.errors) {
+    collectErrorMessages(data.errors, fieldMessages);
+  }
+
+  const uniqueFieldMessages = [...new Set(fieldMessages)];
+
+  if (uniqueFieldMessages.length > 0) {
+    return uniqueFieldMessages;
+  }
+
+  const generalMessages = [];
+
+  collectErrorMessages(data?.message, generalMessages);
+  collectErrorMessages(data?.error, generalMessages);
+
+  if (typeof data === 'string') {
+    collectErrorMessages(data, generalMessages);
+  }
+
+  const errorMessage = err?.message?.trim();
+
+  if (errorMessage && !/^request failed with status code \d+$/i.test(errorMessage)) {
+    generalMessages.push(errorMessage);
+  }
+
+  const uniqueGeneralMessages = [...new Set(generalMessages)];
+
+  return uniqueGeneralMessages.length > 0 ? uniqueGeneralMessages : [fallback];
 };
 
 function getInitialForm() {
@@ -102,7 +132,21 @@ export default function Team() {
   const [memberToDelete, setMemberToDelete] = useState(null);
 
   const showErrorNotification = (message) => {
-    setNotification({ type: 'error', message });
+    const messages = Array.isArray(message) ? message : [message];
+
+    const uniqueMessages = [
+      ...new Set(
+        messages
+          .filter(Boolean)
+          .map((item) => String(item).trim())
+          .filter(Boolean),
+      ),
+    ];
+
+    setNotification({
+      type: 'error',
+      message: uniqueMessages.join('\n'),
+    });
   };
 
   const showSuccessNotification = (message) => {
@@ -139,7 +183,11 @@ export default function Team() {
     } catch (err) {
       console.error('Failed to fetch admins:', err);
 
-      setError(getApiErrorMessage(err, 'Unable to load team members.'));
+      const messages = getApiErrorMessages(err, 'Unable to load team members.');
+
+      showErrorNotification(messages);
+
+      setError(messages.join('\n'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -252,17 +300,16 @@ export default function Team() {
     } catch (err) {
       console.error('Save admin error:', err);
 
-      showErrorNotification(
-        getApiErrorMessage(
-          err,
-          `Unable to ${modalMode === 'create' ? 'create' : 'update'} admin.`,
-        ),
+      const messages = getApiErrorMessages(
+        err,
+        `Unable to ${modalMode === 'create' ? 'create' : 'update'} admin.`,
       );
+
+      showErrorNotification(messages);
     } finally {
       setSaving(false);
     }
   };
-
   // OPEN DELETE CONFIRMATION
   const openDeleteConfirmation = (member) => {
     if (isSuperAdmin(member)) {
@@ -331,7 +378,7 @@ export default function Team() {
     } catch (err) {
       console.error('Delete admin error:', err);
 
-      showErrorNotification(getApiErrorMessage(err, 'Unable to delete member.'));
+      showErrorNotification(getApiErrorMessages(err, 'Unable to delete member.'));
     } finally {
       setDeletingId(null);
     }
@@ -440,7 +487,9 @@ export default function Team() {
             {/* ERROR */}
             {error && (
               <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
-                <p role="alert" className="text-[11px] font-semibold text-[#981733]">
+                <p
+                  role="alert"
+                  className="whitespace-pre-line text-[11px] font-semibold leading-[1.5] text-[#981733]">
                   {error}
                 </p>
 
@@ -762,10 +811,7 @@ export default function Team() {
                     />
                   </div>
 
-                  <NotificationToast
-                    notification={notification}
-                    reduce={reduce}
-                  />
+                  <NotificationToast notification={notification} reduce={reduce} />
 
                   {/* FORM ACTIONS */}
                   <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
@@ -792,7 +838,6 @@ export default function Team() {
                     </Button>
                   </div>
                 </form>
-
               </div>
             </motion.div>
           </>
@@ -892,16 +937,12 @@ export default function Team() {
                   </Button>
                 </div>
 
-                <NotificationToast
-                  notification={notification}
-                  reduce={reduce}
-                />
+                <NotificationToast notification={notification} reduce={reduce} />
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
-
     </>
   );
 }

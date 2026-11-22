@@ -3,9 +3,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 function NotificationToast({ notification, reduce }) {
   const isError = notification?.type === 'error';
 
+  const messages = String(notification?.message || '')
+    .split('\n')
+    .map((message) => message.trim())
+    .filter(Boolean);
+
   return (
     <AnimatePresence>
-      {notification?.message && (
+      {messages.length > 0 && (
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -16,13 +21,15 @@ function NotificationToast({ notification, reduce }) {
               ? 'border-red-200 border-l-4 border-l-[#F5365C]'
               : 'border-green-200 border-l-4 border-l-blue-500'
           }`}>
-          <p
+          <div
             role={isError ? 'alert' : 'status'}
-            className={`pt-0.5 text-xs font-medium leading-[1.4] ${
+            className={`space-y-1 pt-0.5 text-xs font-medium leading-[1.4] ${
               isError ? 'text-[#981733]' : 'text-blue-700'
             }`}>
-            {notification.message}
-          </p>
+            {messages.map((message, index) => (
+              <p key={`${message}-${index}`}>{message}</p>
+            ))}
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

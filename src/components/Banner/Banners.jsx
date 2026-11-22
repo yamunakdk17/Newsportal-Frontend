@@ -111,8 +111,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { motion, useReducedMotion } from 'framer-motion';
-
 import { Skeleton } from '@/components/ui/skeleton';
 import api from '@/services/api';
 import { getImageUrl } from '@/lib/getImageUrl';
@@ -124,7 +122,6 @@ import { getBannerHref, isExternalHref } from '@/lib/bannerLink';
 
 export default function AdBanner() {
   const navigate = useNavigate();
-  const reduce = useReducedMotion();
 
   const [banner, setBanner] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -173,7 +170,11 @@ export default function AdBanner() {
   }, []);
 
   const frame =
-    'relative block w-full overflow-hidden aspect-[3/1] sm:aspect-[4/1] md:aspect-[1926/252]';
+    'relative block w-full overflow-hidden ' +
+    'h-[120px] ' +
+    'sm:h-[150px] ' +
+    'md:h-[180px] ' +
+    'lg:h-auto lg:aspect-[1926/252]';
 
   if (loading) {
     return (
@@ -194,7 +195,7 @@ export default function AdBanner() {
 
   const picture = (
     <img
-      src={getImageUrl(banner.image)}
+      src={image}
       alt={banner.title || 'Advertisement'}
       className="h-full w-full object-cover"
       onError={(e) => {
@@ -206,7 +207,7 @@ export default function AdBanner() {
   return (
     <aside
       aria-label="Advertisement"
-      className="relative left-1/2 w-screen -translate-x-1/2 bg-[#EAEBED]">
+      className="relative z-10 w-full overflow-hidden bg-[#EAEBED] md:left-1/2 md:w-screen md:-translate-x-1/2">
       {href ? (
         isExternalHref(href) ? (
           <a

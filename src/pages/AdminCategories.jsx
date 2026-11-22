@@ -376,7 +376,7 @@ export default function Categories() {
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search categories"
                   aria-label="Search categories"
-                  className="h-10 rounded-xl border border-[#E2E5E8] bg-[#F8F9FA] pl-10 text-sm text-[#16181A] shadow-none placeholder:text-[#A7ADB5] focus-visible:ring-2 focus-visible:ring-[#2168CD]/20"
+                  className="h-11 rounded-xl border border-[#E2E5E8] bg-[#F8F9FA] pl-10 text-sm text-[#16181A] shadow-none placeholder:text-[#A7ADB5] focus-visible:ring-2 focus-visible:ring-[#2168CD]/20 sm:h-10"
                 />
               </div>
             </div>
@@ -613,7 +613,7 @@ export default function Categories() {
                       aria-invalid={Boolean(fieldError)}
                       aria-describedby={fieldError ? 'category-name-error' : undefined}
                       disabled={saving}
-                      className="h-10 rounded-xl border border-[#E2E5E8] bg-[#F8F9FA] px-3 text-sm text-[#16181A] shadow-none placeholder:text-[#AEB4BC] focus-visible:border-[#2168CD] focus-visible:ring-[#2168CD]/20"
+                      className="h-11 w-full rounded-xl border border-[#E2E5E8] bg-[#F8F9FA] px-3 text-sm text-[#16181A] shadow-none placeholder:text-[#AEB4BC] focus-visible:border-[#2168CD] focus-visible:ring-[#2168CD]/20 sm:h-10"
                     />
 
                     <AnimatePresence>
@@ -647,7 +647,7 @@ export default function Categories() {
                     <Button
                       type="submit"
                       disabled={saving}
-                      className="h-10 flex-1 gap-1.5 rounded-xl bg-[#2168CD] px-4 text-xs font-medium text-white shadow-none hover:bg-[#1B58B0]">
+                      className="h-11 w-full gap-1.5 rounded-xl bg-[#2168CD] px-4 text-sm font-medium text-white shadow-none hover:bg-[#1B58B0] sm:h-10 sm:w-auto sm:flex-1 sm:text-xs">
                       {saving ? (
                         <Loader2 className="size-3.5 animate-spin" />
                       ) : (
@@ -667,7 +667,7 @@ export default function Categories() {
                         variant="outline"
                         onClick={cancelEdit}
                         disabled={saving}
-                        className="h-10 rounded-xl px-4 text-xs font-medium text-[#4A4E54]">
+                        className="h-11 w-full rounded-xl px-4 text-sm font-medium text-[#4A4E54] sm:h-10 sm:w-auto sm:text-xs">
                         Cancel
                       </Button>
                     )}

@@ -499,47 +499,58 @@ function Category() {
             ease: 'easeOut',
           }}
           className="
-            mt-6
-            flex
-            w-full
-            items-center
-            justify-between
-            gap-4
-            sm:mt-8
-            xl:mt-10
-          ">
+    mt-6
+    flex
+    w-full
+    min-w-0
+    items-center
+    justify-between
+    gap-2
+    overflow-visible
+    sm:mt-8
+    sm:gap-4
+    xl:mt-10
+  ">
           <div
             className="
-              flex
-              w-fit
-              items-center
-              border-l-[5px]
-              border-[#164B99]
-              bg-[linear-gradient(90deg,rgba(33,104,205,0.14)_2.48%,rgba(17,52,103,0.08)_100%)]
-              px-4
-              py-2
-              sm:px-5
-              sm:py-2.5
-              xl:px-6
-              xl:py-3
-            ">
+    flex
+    min-w-0
+    max-w-[calc(100%-44px)]
+    w-fit
+    items-center
+      border-l-[5px]
+      border-[#164B99]
+      bg-[linear-gradient(90deg,rgba(33,104,205,0.14)_2.48%,rgba(17,52,103,0.08)_100%)]
+      px-3
+      py-1.5
+      sm:px-5
+      sm:py-2.5
+      xl:px-6
+      xl:py-3
+    ">
             <h1
               className="
-                font-['Mukta',sans-serif]
-                text-lg
-                font-bold
-                leading-tight
-                tracking-[0.002em]
-                text-[#164B99]
-                sm:text-xl
-                md:text-2xl
-                xl:text-[28px]
-              ">
+              truncate
+        font-['Mukta',sans-serif]
+        text-lg
+        font-bold
+        leading-tight
+        tracking-[0.002em]
+        text-[#164B99]
+        sm:text-xl
+        md:text-2xl
+        xl:text-[28px]
+      ">
               {categoryName || 'समाचार'}
             </h1>
           </div>
 
-          <NewsDateFilter value={selectedDate} onChange={changeDate} />
+          <div
+            className="w-fit min-w-0 shrink-0
+
+    ">
+            <NewsDateFilter value={selectedDate} onChange={changeDate} />
+          </div>
         </motion.div>
         {selectedDate && (
           <div className="mt-4 flex items-center gap-2 font-['Mukta',sans-serif] text-sm text-[#555B63] sm:text-base">
