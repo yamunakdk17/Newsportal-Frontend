@@ -10,24 +10,36 @@ import { Skeleton } from '@/components/ui/skeleton';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 import api from '@/services/api';
 
-const formatDate = (value) => {
-  if (!value) return '';
+const getPostList = (payload) => {
+  const data = payload?.data;
 
-  const d = new Date(value);
+  return [data, data?.data, data?.posts].find(Array.isArray) || [];
+};
 
-  if (Number.isNaN(d.getTime())) return '';
+const getPostsLastPage = (payload) => {
+  const lastPage = Number(
+    payload?.meta?.last_page ??
+      payload?.last_page ??
+      payload?.data?.meta?.last_page ??
+      payload?.data?.last_page,
+  );
 
-  return d.toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric',
-  });
+  return Number.isFinite(lastPage) && lastPage > 0 ? lastPage : 1;
+};
+
+const getPostCategoryId = (post) => {
+  const id = post?.category_id ?? post?.category?.id;
+
+  return id === null || id === undefined ? '' : String(id);
 };
 
 export default function Categories() {
   const reduce = useReducedMotion();
 
   const [categories, setCategories] = useState([]);
+  const [postCounts, setPostCounts] = useState({});
+  const [countsLoading, setCountsLoading] = useState(true);
+  const [countsFailed, setCountsFailed] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -69,8 +81,65 @@ export default function Categories() {
     }
   };
 
+  // Counts the real news of every category from /admin/posts (all pages),
+  // so the number does not depend on a backend articles_count field.
+  const loadPostCounts = async () => {
+    try {
+      const fetchPage = (page) =>
+        api.get('/admin/posts', { params: { page, per_page: 100 } });
+
+      const firstResponse = await fetchPage(1);
+
+      if (firstResponse.data?.success === false) {
+        throw new Error(firstResponse.data?.message || 'Unable to load news.');
+      }
+
+      const lastPage = getPostsLastPage(firstResponse.data);
+
+      const otherResponses = await Promise.all(
+        Array.from({ length: Math.max(0, lastPage - 1) }, (_, index) =>
+          fetchPage(index + 2),
+        ),
+      );
+
+      const uniquePosts = new Map();
+
+      [firstResponse, ...otherResponses]
+        .flatMap((response) => getPostList(response.data))
+        .forEach((post, index) => {
+          if (post?.deleted_at) return;
+
+          const key = String(post?.id ?? post?.post_id ?? post?.slug ?? `post-${index}`);
+
+          if (!uniquePosts.has(key)) {
+            uniquePosts.set(key, post);
+          }
+        });
+
+      const counts = {};
+
+      uniquePosts.forEach((post) => {
+        const categoryKey = getPostCategoryId(post);
+
+        if (categoryKey) {
+          counts[categoryKey] = (counts[categoryKey] || 0) + 1;
+        }
+      });
+
+      setPostCounts(counts);
+      setCountsFailed(false);
+    } catch (error) {
+      console.error('Get category news counts error:', error);
+
+      setCountsFailed(true);
+    } finally {
+      setCountsLoading(false);
+    }
+  };
+
   useEffect(() => {
     Promise.resolve().then(loadCategories);
+    Promise.resolve().then(loadPostCounts);
   }, []);
 
   useEffect(() => {
@@ -442,13 +511,15 @@ export default function Categories() {
 
                             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] leading-4 text-[#969CA5]">
                               <span>
-                                Articles:{' '}
-                                {category.articles_count ?? category.news_count ?? 0}
+                                News:{' '}
+                                {countsLoading
+                                  ? '...'
+                                  : countsFailed
+                                    ? (category.articles_count ??
+                                      category.news_count ??
+                                      '-')
+                                    : (postCounts[String(category.id)] ?? 0)}
                               </span>
-
-                              {category.created_at && (
-                                <span>{formatDate(category.created_at)}</span>
-                              )}
                             </div>
                           </div>
 

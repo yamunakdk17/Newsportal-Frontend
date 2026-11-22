@@ -829,11 +829,13 @@ function Home() {
           ),
         );
         const uniqueNews = new Map();
-        [firstPage, ...otherPages].flatMap((page) => page.items).forEach((item) => {
-          if (item?.slug && !uniqueNews.has(String(item.slug))) {
-            uniqueNews.set(String(item.slug), item);
-          }
-        });
+        [firstPage, ...otherPages]
+          .flatMap((page) => page.items)
+          .forEach((item) => {
+            if (item?.slug && !uniqueNews.has(String(item.slug))) {
+              uniqueNews.set(String(item.slug), item);
+            }
+          });
         const mergedNews = [...uniqueNews.values()].filter(isPublishedNews);
 
         if (active) {
@@ -946,15 +948,16 @@ function Home() {
   const anotherNews = useMemo(() => {
     const candidates = homeSectionNews;
     const shownIds = new Set(
-      visibleSections.flatMap((section) => section.items.map((item) => String(item.slug))),
+      visibleSections.flatMap((section) =>
+        section.items.map((item) => String(item.slug)),
+      ),
     );
     const remaining = sortByPriorityThenNewest(
       candidates.filter((item) => !shownIds.has(String(item.slug))),
     );
 
-    return (remaining.length > 0
-      ? remaining
-      : sortByPriorityThenNewest(candidates)
+    return (
+      remaining.length > 0 ? remaining : sortByPriorityThenNewest(candidates)
     ).slice(0, 3);
   }, [homeSectionNews, visibleSections]);
 
@@ -997,16 +1000,36 @@ function Home() {
               </p>
             )}
 
-            {visibleSections.map((section) => (
-              <section key={section.key} className="my-8">
-                <NewsSection
-                  selectedCategory={section.category}
-                  newsData={section.items}
-                />
-              </section>
+            {visibleSections.map((section, index) => (
+              <div key={section.key}>
+                <section className="my-8">
+                  <NewsSection
+                    selectedCategory={section.category}
+                    newsData={section.items}
+                  />
+                </section>
+
+                {index === 1 && (
+                  <section className="my-8 w-full">
+                    <Banners />
+                  </section>
+                )}
+
+                {index === 4 && (
+                  <section className="my-8 w-full">
+                    <Banners />
+                  </section>
+                )}
+              </div>
             ))}
 
             {visibleSections.length > 0 && (
+              <section className="my-8">
+                <NewsAnotherSection newsData={anotherNews} onSelect={handleHeroSelect} />
+              </section>
+            )}
+
+            {/* {visibleSections.length > 0 && (
               <>
                 <section className="my-8 w-full">
                   <Banners />
@@ -1019,7 +1042,7 @@ function Home() {
                   />
                 </section>
               </>
-            )}
+            )} */}
           </>
         )}
       </main>

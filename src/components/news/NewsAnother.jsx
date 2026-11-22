@@ -247,11 +247,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import api from '@/services/api';
-import {
-  getNewsList,
-  isPublishedNews,
-  sortByPriorityThenNewest,
-} from '@/lib/news';
+import { getNewsList, isPublishedNews, sortByPriorityThenNewest } from '@/lib/news';
 import { getImageUrl } from '@/lib/getImageUrl';
 import { formatNepaliDate } from '@/lib/nepaliDate';
 
@@ -361,7 +357,10 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
         });
 
         setNews(
-          sortByPriorityThenNewest(getNewsList(response).filter(isPublishedNews)).slice(0, 3),
+          sortByPriorityThenNewest(getNewsList(response).filter(isPublishedNews)).slice(
+            0,
+            3,
+          ),
         );
       } catch (error) {
         console.error('Unable to load news:', error);
