@@ -359,10 +359,9 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
         });
 
         setNews(
-          sortByPriorityThenNewest(getNewsList(response).filter(isPublishedNews)).slice(
-            0,
-            3,
-          ),
+          [...getNewsList(response).filter(isPublishedNews)]
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 3),
         );
       } catch (error) {
         console.error('Unable to load news:', error);
