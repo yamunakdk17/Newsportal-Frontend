@@ -339,6 +339,8 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  console.log('NewsPost newsData:', newsData);
+
   useEffect(() => {
     if (Array.isArray(newsData)) {
       setLoading(false);
@@ -417,11 +419,17 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
     );
   }
 
-  const stories = Array.isArray(newsData)
-    ? sortByPriorityThenNewest(newsData.filter(isPublishedNews)).slice(0, 3)
-    : news;
+  // const stories = Array.isArray(newsData)
+  //   ? sortByPriorityThenNewest(newsData.filter(isPublishedNews)).slice(0, 3)
+  //   : news;
+
+  const stories = [...newsData].sort(() => Math.random() - 0.5).slice(0, 3);
+
+  console.log('bcnccnc', stories);
 
   const [main, left, right] = stories;
+
+  console.log('dndjnn', main, left, right);
 
   if (!main) {
     return null;
@@ -448,7 +456,6 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           className="md:col-start-1 md:row-start-2 lg:col-start-1 lg:row-start-1"
         />
       )}
-
       <Card
         story={main}
         ratio={828 / 532}
