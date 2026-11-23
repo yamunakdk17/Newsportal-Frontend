@@ -719,7 +719,6 @@ import Banners from '@/components/Banner/Banners';
 
 import api from '@/services/api';
 import {
-  getNewsId,
   getNewsList,
   getNewsTime,
   isFeaturedNews,
@@ -730,20 +729,6 @@ import {
 const NEWS_PER_PAGE = 8;
 const STORIES_PER_CATEGORY = 4;
 const MAX_CATEGORY_SECTIONS = 5;
-
-const getArticleIdentity = (item, fallback) => {
-  const id = getNewsId(item);
-
-  if (id) {
-    return `id:${id}`;
-  }
-
-  if (item?.slug) {
-    return `slug:${item.slug}`;
-  }
-
-  return fallback ?? item;
-};
 
 const getArticleCategory = (item, categories) => {
   const rawCategory = item?.category;
@@ -782,8 +767,6 @@ const fetchNewsPage = async (page) => {
       per_page: NEWS_PER_PAGE,
     },
   });
-
-  console.log('[Home] News API response:', { page, response: response.data });
 
   if (response.data?.success === false) {
     throw new Error(response.data?.message || 'Unable to load news.');
@@ -846,18 +829,13 @@ function Home() {
           ),
         );
         const uniqueNews = new Map();
-        [firstPage, ...otherPages].forEach((page, pageIndex) => {
-          page.items.forEach((item, itemIndex) => {
-            const identity = getArticleIdentity(
-              item,
-              `page-${pageIndex}-item-${itemIndex}`,
-            );
-
-            if (!uniqueNews.has(identity)) {
-              uniqueNews.set(identity, item);
+        [firstPage, ...otherPages]
+          .flatMap((page) => page.items)
+          .forEach((item) => {
+            if (item?.slug && !uniqueNews.has(String(item.slug))) {
+              uniqueNews.set(String(item.slug), item);
             }
           });
-        });
         const mergedNews = [...uniqueNews.values()].filter(isPublishedNews);
 
         if (active) {
@@ -913,7 +891,7 @@ function Home() {
     [news],
   );
   const homeSectionNews = useMemo(
-    () => news.filter((item) => item !== heroNews),
+    () => news.filter((item) => item?.slug !== heroNews?.slug),
     [news, heroNews],
   );
 
@@ -921,7 +899,7 @@ function Home() {
     const uniqueArticles = new Map();
 
     homeSectionNews.forEach((item) => {
-      const identityKey = getArticleIdentity(item);
+      const identityKey = String(item?.slug);
 
       if (!uniqueArticles.has(identityKey)) {
         uniqueArticles.set(identityKey, item);
@@ -968,32 +946,21 @@ function Home() {
 
   // Stories not already shown in a visible category section.
   const anotherNews = useMemo(() => {
+    const candidates = homeSectionNews;
     const shownIds = new Set(
       visibleSections.flatMap((section) =>
-        section.items.map((item) => getArticleIdentity(item)),
+        section.items.map((item) => String(item.slug)),
       ),
     );
     const remaining = sortByPriorityThenNewest(
-      homeSectionNews.filter(
-        (item) => !shownIds.has(getArticleIdentity(item)),
-      ),
+      candidates.filter((item) => !shownIds.has(String(item.slug))),
     );
-    const selected = new Map();
 
-    [
-      ...remaining,
-      ...sortByPriorityThenNewest(homeSectionNews),
-      ...sortByPriorityThenNewest(news),
-    ].forEach((item) => {
-      const identity = getArticleIdentity(item);
+    return (
+      remaining.length > 0 ? remaining : sortByPriorityThenNewest(candidates)
+    ).slice(0, 3);
+  }, [homeSectionNews, visibleSections]);
 
-      if (selected.size < 3 && !selected.has(identity)) {
-        selected.set(identity, item);
-      }
-    });
-
-    return [...selected.values()];
-  }, [homeSectionNews, news, visibleSections]);
   return (
     <>
       <Header />

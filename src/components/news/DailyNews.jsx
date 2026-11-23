@@ -124,7 +124,6 @@ export default function DailyNews({ title = 'Daily Updates', newsData }) {
 
     const fetchNews = async () => {
       try {
-        console.log('Fetching daily news from backend...');
         setLoading(true);
         setError('');
 
@@ -134,8 +133,6 @@ export default function DailyNews({ title = 'Daily Updates', newsData }) {
             per_page: 8,
           },
         });
-
-        console.log('DAILY NEWS BACKEND RESPONSE:', response.data);
 
         /*
          * Your backend appears to return:
@@ -150,8 +147,6 @@ export default function DailyNews({ title = 'Daily Updates', newsData }) {
          * Therefore:
          */
         const newsData = response.data?.data || [];
-
-        console.log('DAILY NEWS ARRAY:', newsData);
 
         setNews(Array.isArray(newsData) ? newsData : []);
       } catch (error) {
@@ -278,10 +273,6 @@ export default function DailyNews({ title = 'Daily Updates', newsData }) {
     if (!story) {
       return;
     }
-
-    console.log('CLICKED NEWS:', story);
-
-    console.log('NEWS SLUG:', story.slug);
 
     if (!story.slug) {
       console.error('News slug is missing:', story);

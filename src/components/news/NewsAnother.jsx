@@ -98,8 +98,6 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  console.log('NewsPost newsData:', newsData);
-
   useEffect(() => {
     if (Array.isArray(newsData)) {
       setLoading(false);
@@ -122,7 +120,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
             .slice(0, 3),
         );
       } catch (error) {
-        console.error('Unable to load news:', error);
+        // console.error('Unable to load news:', error);
         setNews([]);
       } finally {
         setLoading(false);
@@ -184,11 +182,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
     .sort(() => Math.random() - 0.5)
     .slice(0, 3);
 
-  console.log('bcnccnc', stories);
-
   const [main, left, right] = stories;
-
-  console.log('dndjnn', main, left, right);
 
   if (!main) {
     return null;

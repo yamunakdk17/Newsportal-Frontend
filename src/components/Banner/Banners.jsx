@@ -136,8 +136,8 @@ export default function AdBanner() {
 
         const response = await api.get('/banners');
 
-        console.log('FULL BANNER RESPONSE:', response.data);
-        console.log('BANNER DATA:', response.data?.data);
+        // console.log('FULL BANNER RESPONSE:', response.data);
+        // console.log('BANNER DATA:', response.data?.data);
         const responseData = response.data?.data ?? response.data;
 
         // Support an array or a single banner object.

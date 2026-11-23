@@ -472,7 +472,8 @@ function AdminNews() {
     const mappedErrors = {};
 
     Object.entries(backendErrors).forEach(([field, value]) => {
-      const targetField = fieldMap[field] || (field.startsWith('images') ? 'images' : field);
+      const targetField =
+        fieldMap[field] || (field.startsWith('images') ? 'images' : field);
       const messages = (Array.isArray(value) ? value : [value]).filter(
         (message) => typeof message === 'string' && message.trim(),
       );
@@ -852,9 +853,7 @@ function AdminNews() {
 
     if (imagePath) {
       setRemovedImagePaths((current) =>
-        current.includes(imagePath)
-          ? current
-          : [...current, imagePath],
+        current.includes(imagePath) ? current : [...current, imagePath],
       );
     }
   };

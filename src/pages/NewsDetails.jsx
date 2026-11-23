@@ -78,8 +78,6 @@
 
 //         const response = await api.get(`/news/${slug}`);
 
-//         console.log('News details:', response.data);
-
 //         if (!response.data?.success) {
 //           setError(response.data?.message || 'News not found.');
 
@@ -430,8 +428,6 @@ function NewsDetails() {
         setError('');
 
         const response = await api.get(`/news/${slug}`);
-
-        console.log('News details:', response.data);
 
         if (!response.data?.success) {
           setError(response.data?.message || 'News not found.');
