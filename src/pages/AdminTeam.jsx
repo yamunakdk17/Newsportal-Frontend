@@ -171,8 +171,6 @@ export default function Team() {
 
       const response = await api.get('/admin/admins');
 
-      console.log('Admins response:', response.data);
-
       if (response.data?.success === false) {
         throw new Error(response.data?.message || 'Unable to load team members.');
       }
@@ -272,8 +270,6 @@ export default function Team() {
         };
 
         const response = await api.post('/admin/admins', payload);
-
-        console.log('Create admin response:', response.data);
       } else {
         const payload = {
           name: form.name.trim(),
@@ -285,8 +281,6 @@ export default function Team() {
         }
 
         const response = await api.put(`/admin/admins/${selectedMember.id}`, payload);
-
-        console.log('Update admin response:', response.data);
       }
 
       setModalOpen(false);
@@ -349,8 +343,6 @@ export default function Team() {
       const response = await api.delete(
         `/admin/admins/${encodeURIComponent(memberToDelete.id)}`,
       );
-
-      console.log('Delete admin response:', response.data);
 
       if (response.data?.success === false) {
         showErrorNotification(response.data?.message || 'Unable to delete member.');

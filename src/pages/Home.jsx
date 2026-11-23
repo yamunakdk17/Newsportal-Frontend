@@ -719,6 +719,7 @@ import Banners from '@/components/Banner/Banners';
 
 import api from '@/services/api';
 import {
+  getNewsId,
   getNewsList,
   getNewsTime,
   isFeaturedNews,
@@ -729,6 +730,20 @@ import {
 const NEWS_PER_PAGE = 8;
 const STORIES_PER_CATEGORY = 4;
 const MAX_CATEGORY_SECTIONS = 5;
+
+const getArticleIdentity = (item, fallback) => {
+  const id = getNewsId(item);
+
+  if (id) {
+    return `id:${id}`;
+  }
+
+  if (item?.slug) {
+    return `slug:${item.slug}`;
+  }
+
+  return fallback ?? item;
+};
 
 const getArticleCategory = (item, categories) => {
   const rawCategory = item?.category;
@@ -768,16 +783,27 @@ const fetchNewsPage = async (page) => {
     },
   });
 
+  console.log('[Home] News API response:', { page, response: response.data });
+
   if (response.data?.success === false) {
     throw new Error(response.data?.message || 'Unable to load news.');
   }
 
   const payload = response.data?.data;
-  const meta = payload?.meta || response.data?.meta;
+  const meta =
+    payload?.meta ||
+    response.data?.meta ||
+    payload?.pagination ||
+    response.data?.pagination;
+  const lastPageValue =
+    meta?.last_page ??
+    meta?.lastPage ??
+    meta?.total_pages ??
+    meta?.totalPages;
 
   return {
     items: getNewsList(response),
-    lastPage: Number(meta?.last_page) || 1,
+    lastPage: Math.max(1, Number(lastPageValue) || 1),
   };
 };
 
@@ -829,14 +855,20 @@ function Home() {
           ),
         );
         const uniqueNews = new Map();
-        [firstPage, ...otherPages]
-          .flatMap((page) => page.items)
-          .forEach((item) => {
-            if (item?.slug && !uniqueNews.has(String(item.slug))) {
-              uniqueNews.set(String(item.slug), item);
+        [firstPage, ...otherPages].forEach((page, pageIndex) => {
+          page.items.forEach((item, itemIndex) => {
+            const identity = getArticleIdentity(
+              item,
+              `page-${pageIndex}-item-${itemIndex}`,
+            );
+
+            if (!uniqueNews.has(identity)) {
+              uniqueNews.set(identity, item);
             }
           });
+        });
         const mergedNews = [...uniqueNews.values()].filter(isPublishedNews);
+        console.log('[Home] Published news loaded:', mergedNews.length);
 
         if (active) {
           setNews(mergedNews);
@@ -891,7 +923,7 @@ function Home() {
     [news],
   );
   const homeSectionNews = useMemo(
-    () => news.filter((item) => item?.slug !== heroNews?.slug),
+    () => news.filter((item) => item !== heroNews),
     [news, heroNews],
   );
 
@@ -899,7 +931,7 @@ function Home() {
     const uniqueArticles = new Map();
 
     homeSectionNews.forEach((item) => {
-      const identityKey = String(item?.slug);
+      const identityKey = getArticleIdentity(item);
 
       if (!uniqueArticles.has(identityKey)) {
         uniqueArticles.set(identityKey, item);
@@ -946,20 +978,32 @@ function Home() {
 
   // Stories not already shown in a visible category section.
   const anotherNews = useMemo(() => {
-    const candidates = homeSectionNews;
     const shownIds = new Set(
       visibleSections.flatMap((section) =>
-        section.items.map((item) => String(item.slug)),
+        section.items.map((item) => getArticleIdentity(item)),
       ),
     );
     const remaining = sortByPriorityThenNewest(
-      candidates.filter((item) => !shownIds.has(String(item.slug))),
+      homeSectionNews.filter(
+        (item) => !shownIds.has(getArticleIdentity(item)),
+      ),
     );
+    const selected = new Map();
 
-    return (
-      remaining.length > 0 ? remaining : sortByPriorityThenNewest(candidates)
-    ).slice(0, 3);
-  }, [homeSectionNews, visibleSections]);
+    [
+      ...remaining,
+      ...sortByPriorityThenNewest(homeSectionNews),
+      ...sortByPriorityThenNewest(news),
+    ].forEach((item) => {
+      const identity = getArticleIdentity(item);
+
+      if (selected.size < 3 && !selected.has(identity)) {
+        selected.set(identity, item);
+      }
+    });
+
+    return [...selected.values()];
+  }, [homeSectionNews, news, visibleSections]);
 
   return (
     <>
