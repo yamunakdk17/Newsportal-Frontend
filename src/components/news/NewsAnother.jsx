@@ -342,7 +342,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   console.log('NewsPost newsData:', newsData);
 
   useEffect(() => {
-    if (Array.isArray(newsData)) {
+    if (Array.isArray(news)) {
       setLoading(false);
       return;
     }
@@ -358,6 +358,8 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
           },
         });
 
+        console.log('sdsdd', response);
+
         setNews(
           [...getNewsList(response).filter(isPublishedNews)]
             .sort(() => Math.random() - 0.5)
@@ -372,7 +374,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
     };
 
     fetchNews();
-  }, [newsData]);
+  }, [news]);
 
   const getImageurl = (item) => getImageUrl(item?.featured_image || item?.images?.[0]);
 
@@ -406,7 +408,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   const gridClass =
     'mx-auto grid w-full max-w-[1680px] grid-cols-1 items-start gap-6 md:grid-cols-2 lg:grid-cols-[402fr_828fr_402fr] lg:items-center';
 
-  if (!Array.isArray(newsData) && loading) {
+  if (!Array.isArray(news) && loading) {
     return (
       <div className={gridClass}>
         <Skeleton className="aspect-[402/386] w-full rounded-none" />
@@ -422,7 +424,7 @@ export default function NewsPost({ onSelect = () => {}, newsData }) {
   //   ? sortByPriorityThenNewest(newsData.filter(isPublishedNews)).slice(0, 3)
   //   : news;
 
-  const stories = [...newsData].sort(() => Math.random() - 0.5).slice(0, 3);
+  const stories = [...news].sort(() => Math.random() - 0.5).slice(0, 3);
 
   console.log('bcnccnc', stories);
 
