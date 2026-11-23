@@ -783,7 +783,7 @@ const fetchNewsPage = async (page) => {
     },
   });
 
-  console.log('[Home] News API response:', { page, response: response.data });
+  // console.log('[Home] News API response:', { page, response: response.data });
 
   if (response.data?.success === false) {
     throw new Error(response.data?.message || 'Unable to load news.');
@@ -796,10 +796,7 @@ const fetchNewsPage = async (page) => {
     payload?.pagination ||
     response.data?.pagination;
   const lastPageValue =
-    meta?.last_page ??
-    meta?.lastPage ??
-    meta?.total_pages ??
-    meta?.totalPages;
+    meta?.last_page ?? meta?.lastPage ?? meta?.total_pages ?? meta?.totalPages;
 
   return {
     items: getNewsList(response),
@@ -868,7 +865,7 @@ function Home() {
           });
         });
         const mergedNews = [...uniqueNews.values()].filter(isPublishedNews);
-        console.log('[Home] Published news loaded:', mergedNews.length);
+        // console.log('[Home] Published news loaded:', mergedNews.length);
 
         if (active) {
           setNews(mergedNews);
@@ -984,9 +981,7 @@ function Home() {
       ),
     );
     const remaining = sortByPriorityThenNewest(
-      homeSectionNews.filter(
-        (item) => !shownIds.has(getArticleIdentity(item)),
-      ),
+      homeSectionNews.filter((item) => !shownIds.has(getArticleIdentity(item))),
     );
     const selected = new Map();
 
