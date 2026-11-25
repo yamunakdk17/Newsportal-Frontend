@@ -47,6 +47,7 @@ export default function Categories() {
 
   const [pageError, setPageError] = useState('');
   const [success, setSuccess] = useState('');
+  const [deleteError, setDeleteError] = useState('');
 
   const [query, setQuery] = useState('');
 
@@ -158,11 +159,7 @@ export default function Categories() {
     setFieldError('');
     setPageError('');
     setSuccess('');
-
-    window.scrollTo({
-      top: 0,
-      behavior: reduce ? 'auto' : 'smooth',
-    });
+    setDeleteError('');
   };
 
   const cancelEdit = () => {
@@ -202,7 +199,7 @@ export default function Categories() {
           return;
         }
 
-        const returnedCategory =
+        const updatedCategory =
           response.data?.data && !Array.isArray(response.data.data)
             ? response.data.data
             : null;
@@ -212,11 +209,10 @@ export default function Categories() {
             if (category.id !== editingCategory.id) {
               return category;
             }
-
             return {
               ...category,
-              ...(returnedCategory || {}),
-              name: returnedCategory?.name || value,
+              ...(updatedCategory || {}),
+              name: updatedCategory?.name || value,
             };
           }),
         );
@@ -225,6 +221,7 @@ export default function Categories() {
 
         setEditingCategory(null);
         setName('');
+        setFieldError('');
 
         return;
       }
@@ -283,6 +280,8 @@ export default function Categories() {
 
     setPageError('');
     setSuccess('');
+    setDeleteError('');
+
     setDeleteCategory(category);
   };
 
@@ -290,6 +289,7 @@ export default function Categories() {
     if (deletingId) return;
 
     setDeleteCategory(null);
+    setDeleteError('');
   };
 
   const confirmDelete = async () => {
@@ -299,6 +299,8 @@ export default function Categories() {
 
     try {
       setDeletingId(category.id);
+      setDeleteError('');
+
       setPageError('');
       setSuccess('');
 
@@ -307,8 +309,7 @@ export default function Categories() {
       console.log('Delete category response:', response.data);
 
       if (!response.data?.success) {
-        setPageError(response.data?.message || 'Failed to delete category.');
-
+        setDeleteError(response.data?.message || 'Failed to delete category.');
         return;
       }
 
@@ -320,12 +321,13 @@ export default function Categories() {
       }
 
       setDeleteCategory(null);
+      setDeleteError('');
 
       setSuccess(response.data?.message || 'Category deleted successfully.');
     } catch (error) {
       console.error('Delete category error:', error);
 
-      setPageError(
+      setDeleteError(
         error.response?.data?.message || error.message || 'Unable to delete category.',
       );
     } finally {
@@ -564,28 +566,13 @@ export default function Categories() {
                     <h2
                       id="category-form-title"
                       className="text-base font-semibold leading-5 tracking-[-0.01em] text-[#16181A]">
-                      {editingCategory ? 'Edit Category' : 'Add Category'}
+                      Add Category
                     </h2>
 
                     <p className="mt-1 text-xs leading-5 text-[#8B9199]">
-                      {editingCategory
-                        ? 'Update the selected category.'
-                        : 'Create a new category for your news.'}
+                      Create a new category for your news.
                     </p>
                   </div>
-
-                  {editingCategory && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={cancelEdit}
-                      disabled={saving}
-                      className="size-8 rounded-lg text-[#737982] hover:bg-slate-100"
-                      aria-label="Cancel editing">
-                      <X className="size-4" />
-                    </Button>
-                  )}
                 </div>
 
                 <form
@@ -761,7 +748,7 @@ export default function Categories() {
                       </Button>
                     </div>
 
-                    <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    {/* <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                       <Button
                         type="button"
                         variant="outline"
@@ -788,7 +775,214 @@ export default function Categories() {
                           </>
                         )}
                       </Button>
+                    </div> */}
+
+                    <div className="mt-5">
+                      <AnimatePresence>
+                        {deleteError && (
+                          <motion.p
+                            role="alert"
+                            initial={
+                              reduce
+                                ? false
+                                : {
+                                    opacity: 0,
+                                    y: -4,
+                                  }
+                            }
+                            animate={{
+                              opacity: 1,
+                              y: 0,
+                            }}
+                            exit={{
+                              opacity: 0,
+                              y: -4,
+                            }}
+                            className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-xs font-medium leading-5 text-[#981733]">
+                            {deleteError}
+                          </motion.p>
+                        )}
+                      </AnimatePresence>
+
+                      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={closeDeleteModal}
+                          disabled={Boolean(deletingId)}
+                          className="h-10 rounded-xl px-4 text-xs font-medium text-[#4A4E54]">
+                          Cancel
+                        </Button>
+
+                        <Button
+                          type="button"
+                          onClick={confirmDelete}
+                          disabled={Boolean(deletingId)}
+                          className="h-10 rounded-xl bg-[#B42318] px-4 text-xs font-medium text-white hover:bg-[#981B12]">
+                          {deletingId ? (
+                            <>
+                              <Loader2 className="mr-2 size-3.5 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="mr-2 size-3.5" />
+                              Delete Category
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {editingCategory && (
+              <motion.div
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]"
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onMouseDown={(event) => {
+                  if (event.target === event.currentTarget && !saving) {
+                    cancelEdit();
+                  }
+                }}>
+                <motion.div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="edit-category-title"
+                  initial={
+                    reduce
+                      ? false
+                      : {
+                          opacity: 0,
+                          scale: 0.97,
+                          y: 8,
+                        }
+                  }
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    y: 0,
+                  }}
+                  exit={{
+                    opacity: 0,
+                    scale: 0.97,
+                    y: 8,
+                  }}
+                  transition={{
+                    duration: 0.2,
+                    ease: 'easeOut',
+                  }}
+                  className="w-full max-w-[420px] overflow-hidden rounded-2xl bg-white shadow-2xl">
+                  <div className="p-5 sm:p-6">
+                    <div className="flex items-start gap-3">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#2168CD]">
+                        <Pencil className="size-4" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h2
+                          id="edit-category-title"
+                          className="text-base font-semibold leading-5 text-[#16181A]">
+                          Edit Category
+                        </h2>
+
+                        <p className="mt-1.5 text-xs leading-5 text-[#737982]">
+                          Update the category name below.
+                        </p>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={cancelEdit}
+                        disabled={saving}
+                        className="size-8 shrink-0 rounded-lg text-[#737982] hover:bg-slate-100"
+                        aria-label="Close edit dialog">
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+
+                    <form
+                      onSubmit={handleSubmit}
+                      noValidate
+                      className="mt-5 flex flex-col gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <Label
+                          htmlFor="edit-category-name"
+                          className="text-xs font-medium leading-4 text-[#363B42]">
+                          Category Name
+                        </Label>
+
+                        <Input
+                          id="edit-category-name"
+                          value={name}
+                          onChange={(event) => {
+                            setName(event.target.value);
+
+                            if (fieldError) {
+                              setFieldError('');
+                            }
+                          }}
+                          placeholder="e.g. Sports"
+                          aria-invalid={Boolean(fieldError)}
+                          aria-describedby={
+                            fieldError ? 'edit-category-name-error' : undefined
+                          }
+                          disabled={saving}
+                          autoFocus
+                          className="h-11 w-full rounded-xl border border-[#E2E5E8] bg-[#F8F9FA] px-3 text-sm text-[#16181A] shadow-none placeholder:text-[#AEB4BC] focus-visible:border-[#2168CD] focus-visible:ring-[#2168CD]/20"
+                        />
+
+                        <AnimatePresence>
+                          {fieldError && (
+                            <motion.p
+                              id="edit-category-name-error"
+                              role="alert"
+                              initial={reduce ? false : { opacity: 0, y: -3 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0 }}
+                              className="text-[11px] font-medium leading-4 text-[#981733]">
+                              {fieldError}
+                            </motion.p>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={cancelEdit}
+                          disabled={saving}
+                          className="h-10 w-full rounded-xl px-4 text-xs font-medium text-[#4A4E54] sm:w-auto">
+                          Cancel
+                        </Button>
+
+                        <Button
+                          type="submit"
+                          disabled={saving}
+                          className="h-10 w-full gap-1.5 rounded-xl bg-[#2168CD] px-4 text-xs font-medium text-white shadow-none hover:bg-[#1B58B0] sm:w-auto">
+                          {saving ? (
+                            <>
+                              <Loader2 className="size-3.5 animate-spin" />
+                              Updating...
+                            </>
+                          ) : (
+                            <>
+                              <Pencil className="size-3.5" />
+                              Update Category
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </form>
                   </div>
                 </motion.div>
               </motion.div>
